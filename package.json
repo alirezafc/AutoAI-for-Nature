@@ -1,0 +1,59 @@
+{
+  "name": "autoai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AutoAI — AI-native content & knowledge platform with multi-agent content generation, RAG, voice, MCP and workflow automation.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset:production": "tsx scripts/reset-production.ts",
+    "mcp": "tsx scripts/mcp-stdio.ts",
+    "mcp:stdio": "tsx scripts/mcp-stdio.ts",
+    "postinstall": "node scripts/postinstall.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "bcryptjs": "^2.4.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.44.2",
+    "jose": "^6.0.8",
+    "lucide-react": "^0.475.0",
+    "next": "15.5.23",
+    "pg": "^8.13.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "tailwind-merge": "^3.3.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.13.0",
+    "@types/pg": "^8.11.11",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.5.4",
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.30.4",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.5.23",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.23.12",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.8"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
