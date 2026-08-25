@@ -300,8 +300,7 @@
       "email": "Email",
       "password": "Password",
       "signIn": "Sign in",
-      "invalid": "Invalid credentials",
-      "demoHint": "Default credentials are set in .env.local"
+      "invalid": "Invalid credentials"
     },
     "setup": {
       "title": "Welcome to AutoAI for Nature",

@@ -8,11 +8,12 @@ import { useI18n } from "@/components/i18n/intl-provider";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { safeLoginTarget, shouldRenderDemoHint } from "@/lib/auth/login-target";
 
 export function AdminLoginForm({ from }: { from?: string }) {
   const { t } = useI18n();
   const router = useRouter();
-  const target = from ?? "/admin";
+  const target = safeLoginTarget(from);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -48,8 +49,11 @@ export function AdminLoginForm({ from }: { from?: string }) {
         setLoading(false);
         return;
       }
-      router.push(target);
-      router.refresh();
+      // Session cookie is now set. A FULL navigation guarantees the server
+      // middleware evaluates it — the client router cache may still hold the
+      // unauthenticated /admin payload, which previously left the spinner
+      // hanging until a manual refresh.
+      window.location.assign(target);
     } catch {
       setError(t("admin.login.invalid"));
       setLoading(false);
@@ -98,7 +102,12 @@ export function AdminLoginForm({ from }: { from?: string }) {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {t("admin.login.signIn")}
               </Button>
-              <p className="text-center text-xs text-muted-foreground">{t("admin.login.demoHint")}</p>
+              {shouldRenderDemoHint(process.env.NODE_ENV) && (
+                <p className="text-center text-xs text-muted-foreground">
+                  {/* Development-only literal: never shipped to production UI (see shouldRenderDemoHint). */}
+                  {"Default credentials are set in .env.local"}
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>

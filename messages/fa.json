@@ -300,8 +300,7 @@
       "email": "ایمیل",
       "password": "رمز عبور",
       "signIn": "ورود",
-      "invalid": "اطلاعات ورود نامعتبر است",
-      "demoHint": "اعتبار پیش‌فرض در .env.local تنظیم شده است"
+      "invalid": "اطلاعات ورود نامعتبر است"
     },
     "setup": {
       "title": "به AutoAI for Nature خوش آمدید",
