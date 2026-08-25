@@ -78,15 +78,13 @@ export const TOOL_DEFS: McpToolDef[] = [
   },
   {
     name: "search_knowledge",
-    description: "Semantic search over the RAG knowledge base.",
+    description: "Semantic search over the multilingual RAG knowledge base (language-agnostic retrieval).",
     schema: {
       query: z.string().min(1),
-      language: z.enum(["en", "fa"]).optional(),
       topK: z.number().int().min(1).max(10).optional(),
     },
     handler: async (args) => {
       const results = await searchKnowledge(String(args.query), {
-        language: args.language === "fa" ? "fa" : args.language === "en" ? "en" : undefined,
         topK: typeof args.topK === "number" ? args.topK : 4,
       });
       return text(results);

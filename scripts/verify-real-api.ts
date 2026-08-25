@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Real-API end-to-end verification harness (requirement: actually execute real
- * OpenRouter requests — chat, embedding, RAG retrieval, article generation).
+ * OpenRouter requests â€” chat, embedding, RAG retrieval, article generation).
  *
  * Run with an OpenRouter key:
  *   OPENROUTER_API_KEY=sk-or-v1-... npx tsx scripts/verify-real-api.ts
@@ -99,7 +99,7 @@ async function main() {
     });
     tempDocId = doc.id;
     const indexed = await indexDocument(doc.id, "verify-index");
-    const results = await searchKnowledge("how do forests store carbon?", { language: "en", topK: 3 });
+    const results = await searchKnowledge("how do forests store carbon?", { topK: 3 });
     report.rag = {
       indexed,
       retrieved: results.length,

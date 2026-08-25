@@ -293,7 +293,7 @@ export interface SearchResult {
 
 export async function searchKnowledge(
   query: string,
-  opts: { language?: "en" | "fa"; topK?: number } = {}
+  opts: { topK?: number } = {}
 ): Promise<SearchResult[]> {
   const search = await getSetting("rag.search");
   const sources = await getSetting("rag.sources");
@@ -309,9 +309,11 @@ export async function searchKnowledge(
   const embProvider = res.provider;
   const embModel = res.model;
 
-  const languageFilter = opts.language ? `AND kd.language = $3` : "";
+  // NOTE: document language is intentionally NOT a retrieval filter. The
+  // knowledge base is multilingual and nemotron embeddings are cross-lingual,
+  // so a query must be able to hit documents in ANY language. The response
+  // language is controlled separately by the chat layer.
   const params: unknown[] = [vec, allowedTypes.join(",")];
-  if (opts.language) params.push(opts.language);
   const provParam = `$${params.length + 1}`;
   params.push(embProvider);
   const modelParam = `$${params.length + 1}`;
@@ -327,7 +329,6 @@ export async function searchKnowledge(
       AND kd.source_type = ANY(string_to_array($2, ','))
       AND kd.embedding_provider = ${provParam}::text
       AND kd.embedding_model = ${modelParam}::text
-      ${languageFilter}
     ORDER BY kc.embedding <=> $1::vector
     LIMIT ${Math.max(1, Math.min(20, topK))}
   `;
@@ -367,8 +368,8 @@ export interface RagContextResult {
  * separate relevant (>= 0.11) from irrelevant (~0.07) matches, so it gets a
  * proportional window mapped to a friendly 0–100 relevance score.
  */
-async function relevanceMeta(query: string, language: "en" | "fa", topK: number) {
-  const results = await searchKnowledge(query, { language, topK });
+async function relevanceMeta(query: string, topK: number) {
+  const results = await searchKnowledge(query, { topK });
   if (results.length === 0) return { results, hasRelevant: false };
   const emb = await getSetting("rag.embedding");
   const isMock = emb.provider === "mock";
@@ -384,14 +385,20 @@ async function relevanceMeta(query: string, language: "en" | "fa", topK: number)
   return { results, sources, hasRelevant: true, threshold };
 }
 
+/**
+ * Build grounded context for a query across the ENTIRE multilingual corpus.
+ * The `language` argument is intentionally NOT part of retrieval — it exists
+ * only for response-language handling at the chat layer.
+ */
 export async function buildRagContext(
   query: string,
-  language: "en" | "fa",
+  _responseLanguage?: "en" | "fa",
   topK?: number
 ): Promise<RagContextResult> {
+  void _responseLanguage;
   const search = await getSetting("rag.search");
   const k = topK ?? search.topK ?? 4;
-  const { results, sources, hasRelevant } = await relevanceMeta(query, language, k);
+  const { results, sources, hasRelevant } = await relevanceMeta(query, k);
   if (!hasRelevant || !sources) {
     return { context: "", sources: [], hasRelevant: false };
   }
@@ -525,7 +532,6 @@ export async function getKnowledgeDocumentByPostId(postId: string) {
 
 export interface RetrievalDiagnosis {
   query: string;
-  language: "en" | "fa" | null;
   queryEmbedding: { provider: string; model: string; dimensions: number };
   configuredEmbeddingSetting: { provider: string; model: string };
   stages: {
@@ -550,7 +556,7 @@ export interface RetrievalDiagnosis {
  */
 export async function diagnoseRetrieval(
   query: string,
-  opts: { language?: "en" | "fa"; topK?: number } = {}
+  opts: { topK?: number } = {}
 ): Promise<RetrievalDiagnosis> {
   const search = await getSetting("rag.search");
   const sources = await getSetting("rag.sources");
@@ -591,9 +597,8 @@ export async function diagnoseRetrieval(
     [typeParam, provider, model]
   );
 
-  const langFilter = opts.language ? `AND kd.language = $3` : "";
+  // Language is intentionally not a filter — mirrors searchKnowledge.
   const params: unknown[] = [vec, typeParam];
-  if (opts.language) params.push(opts.language);
   const provParam = `$${params.length + 1}`;
   params.push(provider);
   const modelParam = `$${params.length + 1}`;
@@ -608,7 +613,6 @@ export async function diagnoseRetrieval(
       AND kd.source_type = ANY(string_to_array($2, ','))
       AND kd.embedding_provider = ${provParam}::text
       AND kd.embedding_model = ${modelParam}::text
-      ${langFilter}
     ORDER BY kc.embedding <=> $1::vector
     LIMIT ${Math.max(1, Math.min(20, topK * 3))}
   `;
@@ -637,7 +641,6 @@ export async function diagnoseRetrieval(
 
   return {
     query,
-    language: opts.language ?? null,
     queryEmbedding: { provider, model, dimensions },
     configuredEmbeddingSetting: { provider: embSetting.provider, model: embSetting.model },
     stages: {
