@@ -6,6 +6,7 @@ import { routerEmbedding, embeddingToSqlString } from "@/lib/ai/router";
 import { getSetting } from "@/lib/services/system-settings";
 import { RAGError } from "@/lib/ai/errors";
 import { logger } from "@/lib/logging";
+import { allowedSourceTypes, evaluateRelevance, relevanceThreshold, REAL_RELEVANCE_THRESHOLD } from "./relevance";
 import type { Post } from "@/db/schema/content";
 
 export type KnowledgeSourceType = "curated" | "article" | "draft_article";
@@ -298,10 +299,7 @@ export async function searchKnowledge(
   const sources = await getSetting("rag.sources");
   const topK = opts.topK ?? search.topK ?? 4;
 
-  const allowedTypes: string[] = [];
-  if (sources.publishedArticles) allowedTypes.push("article");
-  if (sources.curatedKnowledge) allowedTypes.push("curated");
-  if (sources.draftArticles) allowedTypes.push("draft_article");
+  const allowedTypes = allowedSourceTypes(sources);
   if (allowedTypes.length === 0) return [];
 
   const res = await routerEmbedding({ text: query, runId: `rag-${query.length}`, store: ragStore });
@@ -374,16 +372,16 @@ async function relevanceMeta(query: string, language: "en" | "fa", topK: number)
   if (results.length === 0) return { results, hasRelevant: false };
   const emb = await getSetting("rag.embedding");
   const isMock = emb.provider === "mock";
-  const threshold = isMock ? 0.09 : 0.4;
-  const hasRelevant = results.some((r) => r.similarity >= threshold);
-  if (!hasRelevant) return { results, hasRelevant: false };
+  const threshold = relevanceThreshold(isMock);
+  const { hasRelevant } = evaluateRelevance(results, threshold);
+  if (!hasRelevant) return { results, hasRelevant: false, threshold };
   const sources = results.map((r) => ({
     id: r.documentId,
     title: r.title,
     type: r.sourceType === "article" ? "article" : "knowledge",
     score: isMock ? Math.min(0.95, Math.round((r.similarity / 0.15) * 100) / 100) : Math.round(r.similarity * 100) / 100,
   }));
-  return { results, sources, hasRelevant: true };
+  return { results, sources, hasRelevant: true, threshold };
 }
 
 export async function buildRagContext(
@@ -523,4 +521,146 @@ export async function getKnowledgeDocumentByPostId(postId: string) {
   const c = await getDb();
   const rows = await c.db.select(DOC_FIELDS).from(knowledgeDocuments).where(eq(knowledgeDocuments.postId, postId)).limit(1);
   return rows[0];
+}
+
+export interface RetrievalDiagnosis {
+  query: string;
+  language: "en" | "fa" | null;
+  queryEmbedding: { provider: string; model: string; dimensions: number };
+  configuredEmbeddingSetting: { provider: string; model: string };
+  stages: {
+    totalVectorsInKb: number;
+    vectorsInActiveDocs: number;
+    vectorsAfterSourceTypeFilter: number;
+    vectorsMatchingQueryIdentity: number;
+  };
+  storedIdentities: { provider: string; model: string; dimensions: number | null; documents: number; vectors: number }[];
+  candidateDocuments: { id: string; title: string; sourceType: string; status: string; chunkCount: number }[];
+  topSimilarities: number[];
+  threshold: number;
+  hasRelevant: boolean;
+  retrieved: { title: string; similarity: number; sourceType: string }[];
+}
+
+/**
+ * Stage-by-stage retrieval diagnosis for ONE real query. Reports exactly where
+ * the candidate set shrinks (status -> source_type -> embedding identity ->
+ * similarity threshold) using REAL embeddings. Admin-only; never exposes
+ * credentials.
+ */
+export async function diagnoseRetrieval(
+  query: string,
+  opts: { language?: "en" | "fa"; topK?: number } = {}
+): Promise<RetrievalDiagnosis> {
+  const search = await getSetting("rag.search");
+  const sources = await getSetting("rag.sources");
+  const embSetting = await getSetting("rag.embedding");
+  const topK = opts.topK ?? search.topK ?? 4;
+
+  const res = await routerEmbedding({ text: query, runId: `rag-diag-${query.length}`, store: ragStore });
+  const vec = embeddingToSqlString(res.value.embedding);
+  const provider = res.provider;
+  const model = res.model;
+  const dimensions = res.value.dimensions;
+
+  const totalRows = await raw<{ n: number }>("SELECT count(*)::int AS n FROM knowledge_chunks");
+  const activeRows = await raw<{ n: number }>(
+    `SELECT count(*)::int AS n FROM knowledge_chunks kc JOIN knowledge_documents kd ON kd.id = kc.document_id WHERE kd.status = 'active'`
+  );
+  const allowedTypes = allowedSourceTypes(sources);
+  const typeParam = allowedTypes.join(",");
+  let afterType = activeRows[0]?.n ?? 0;
+  if (allowedTypes.length > 0) {
+    const t = await raw<{ n: number }>(
+      `SELECT count(*)::int AS n FROM knowledge_chunks kc JOIN knowledge_documents kd ON kd.id = kc.document_id
+       WHERE kd.status='active' AND kd.source_type = ANY(string_to_array($1, ','))`,
+      [typeParam]
+    );
+    afterType = t[0]?.n ?? 0;
+  }
+  const identityRows = await raw<{ provider: string; model: string; dimensions: number | null; documents: number; vectors: number }>(
+    `SELECT kd.embedding_provider AS provider, kd.embedding_model AS model, kd.embedding_dimensions AS dimensions,
+            count(DISTINCT kd.id)::int AS documents, count(kc.*)::int AS vectors
+     FROM knowledge_documents kd LEFT JOIN knowledge_chunks kc ON kc.document_id = kd.id
+     GROUP BY 1,2,3 ORDER BY vectors DESC`
+  );
+  const matchRow = await raw<{ n: number }>(
+    `SELECT count(kc.*)::int AS n FROM knowledge_chunks kc JOIN knowledge_documents kd ON kd.id = kc.document_id
+     WHERE kd.status='active' AND kd.source_type = ANY(string_to_array($1, ','))
+       AND kd.embedding_provider = $2::text AND kd.embedding_model = $3::text`,
+    [typeParam, provider, model]
+  );
+
+  const langFilter = opts.language ? `AND kd.language = $3` : "";
+  const params: unknown[] = [vec, typeParam];
+  if (opts.language) params.push(opts.language);
+  const provParam = `$${params.length + 1}`;
+  params.push(provider);
+  const modelParam = `$${params.length + 1}`;
+  params.push(model);
+  const sqlText = `
+    SELECT kc.id::text AS id, kc.document_id::text AS document_id, kd.title, kc.content,
+           kc.language, kd.source_type AS source_type, kc.chunk_index AS chunk_index,
+           1 - (kc.embedding <=> $1::vector) AS similarity
+    FROM knowledge_chunks kc
+    JOIN knowledge_documents kd ON kd.id = kc.document_id
+    WHERE kd.status = 'active'
+      AND kd.source_type = ANY(string_to_array($2, ','))
+      AND kd.embedding_provider = ${provParam}::text
+      AND kd.embedding_model = ${modelParam}::text
+      ${langFilter}
+    ORDER BY kc.embedding <=> $1::vector
+    LIMIT ${Math.max(1, Math.min(20, topK * 3))}
+  `;
+  const rows = await raw<Record<string, unknown>>(sqlText, params);
+  const similarities = rows.map((r) => Number(r.similarity));
+  const threshold = relevanceThreshold(embSetting.provider === "mock");
+  const { hasRelevant } = evaluateRelevance(similarities.map((s) => ({ similarity: s })), threshold);
+
+  const docIds = [...new Set(rows.map((r) => String(r.document_id)))];
+  const candidateDocs = docIds.length
+    ? await (async () => {
+        const list = await raw<Record<string, unknown>>(
+          `SELECT id::text AS id, title, source_type AS source_type, status, chunk_count AS chunk_count
+           FROM knowledge_documents WHERE id = ANY($1::uuid[])`,
+          [docIds]
+        );
+        return list.map((d) => ({
+          id: String(d.id),
+          title: String(d.title),
+          sourceType: String(d.source_type),
+          status: String(d.status),
+          chunkCount: Number(d.chunk_count),
+        }));
+      })()
+    : [];
+
+  return {
+    query,
+    language: opts.language ?? null,
+    queryEmbedding: { provider, model, dimensions },
+    configuredEmbeddingSetting: { provider: embSetting.provider, model: embSetting.model },
+    stages: {
+      totalVectorsInKb: totalRows[0]?.n ?? 0,
+      vectorsInActiveDocs: activeRows[0]?.n ?? 0,
+      vectorsAfterSourceTypeFilter: afterType,
+      vectorsMatchingQueryIdentity: matchRow[0]?.n ?? 0,
+    },
+    storedIdentities: identityRows.map((r) => ({
+      provider: r.provider ?? "(null)",
+      model: r.model ?? "(null)",
+      dimensions: r.dimensions === null ? null : Number(r.dimensions),
+      documents: Number(r.documents),
+      vectors: Number(r.vectors),
+    })),
+    candidateDocuments: candidateDocs,
+    topSimilarities: similarities.map((s) => Math.round(s * 10000) / 10000),
+    threshold,
+    hasRelevant,
+    retrieved: rows.slice(0, topK).map((r) => ({
+      title: String(r.title),
+      similarity: Math.round(Number(r.similarity) * 10000) / 10000,
+      sourceType: String(r.source_type),
+    })),
+  };
 }

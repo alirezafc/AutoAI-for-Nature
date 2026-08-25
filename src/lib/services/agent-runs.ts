@@ -192,6 +192,42 @@ export async function failRun(runId: string, error: string): Promise<void> {
     .where(and(eq(agentSteps.runId, runId), inArray(agentSteps.status, ["queued", "running"])));
 }
 
+/**
+ * Pure selector for runs that must leave "waiting_for_human" when their post
+ * reaches a terminal human decision (approved/published or rejected).
+ *
+ * A post can own MULTIPLE runs: every regeneration creates a new run for the
+ * same postId and re-points posts.agentRunId to it. Finalizing only the
+ * currently-linked run leaves older runs stuck as waiting_for_human forever,
+ * which is exactly the production inconsistency this fixes.
+ */
+export function selectRunsToFinalize<T extends { id: string; postId: string | null; status: string }>(
+  runs: T[],
+  postId: string
+): T[] {
+  return runs.filter((r) => r.postId === postId && r.status === "waiting_for_human");
+}
+
+/**
+ * Transition EVERY waiting_for_human run linked to this post to the terminal
+ * "completed" state (existing architecture state — no new states invented).
+ * Returns the ids of the finalized runs.
+ */
+export async function finalizeWaitingRunsForPost(postId: string): Promise<string[]> {
+  const c = await getDb();
+  const waiting = await c.db
+    .select()
+    .from(agentRuns)
+    .where(and(eq(agentRuns.postId, postId), eq(agentRuns.status, "waiting_for_human")));
+  if (waiting.length === 0) return [];
+  const finishedAt = new Date();
+  for (const run of waiting) {
+    const duration = run.startedAt ? finishedAt.getTime() - new Date(run.startedAt).getTime() : undefined;
+    await updateRun(run.id, { status: "completed", finishedAt, durationMs: duration });
+  }
+  return waiting.map((r) => r.id);
+}
+
 export async function setRunWaitingForHuman(runId: string): Promise<void> {
   await updateRun(runId, { status: "waiting_for_human" });
 }

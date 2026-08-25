@@ -1,5 +1,5 @@
 import { getPost, updatePost, createPostRevision, type PostStatus } from "./posts";
-import { getRunWithSteps, updateRun } from "./agent-runs";
+import { getRunWithSteps, updateRun, finalizeWaitingRunsForPost } from "./agent-runs";
 import { startRegeneration } from "@/lib/agents/engine";
 import { syncPublishedPostToKnowledge } from "@/lib/rag";
 import { logAudit } from "./audit";
@@ -52,16 +52,21 @@ export async function approveArticle(postId: string, actor = "admin"): Promise<R
     indexing = { error: err instanceof Error ? err.message : String(err) };
   }
 
+  // Run state consistency: a post may own MULTIPLE runs (regenerations).
+  // Finalize every waiting_for_human run linked to this post, not just the
+  // currently-linked one, so Admin → Agent Runs can never show stale
+  // "waiting for human" rows for a published article.
+  const finalizedRunIds = await finalizeWaitingRunsForPost(postId);
   const run = post.agentRunId ? await getRunWithSteps(post.agentRunId) : null;
-  if (run && run.status === "waiting_for_human") {
-    await updateRun(run.id, { status: "completed", finishedAt: new Date() });
-  }
 
   await logAudit({
     actor,
     action: "review.approved",
     target: postId,
-    metadata: indexing && "error" in indexing ? { indexingError: indexing.error } : undefined,
+    metadata: {
+      ...(indexing && "error" in indexing ? { indexingError: indexing.error } : {}),
+      ...(finalizedRunIds.length ? { finalizedRunIds } : {}),
+    },
   });
 
   return { postId, status: "published", reviewReason: null, runId: run?.id ?? null, revisionId: rev.id, indexing };
@@ -91,14 +96,14 @@ export async function rejectArticle(postId: string, reason: string, actor = "adm
     actor
   );
 
-  const run = post.agentRunId ? await getRunWithSteps(post.agentRunId) : null;
-  if (run && run.status === "waiting_for_human") {
-    await updateRun(run.id, { status: "completed", finishedAt: new Date() });
-  }
+  // Rejection also terminates the human decision: no run linked to this post
+  // may remain waiting_for_human afterwards.
+  await finalizeWaitingRunsForPost(postId);
 
-  await logAudit({ actor, action: "review.rejected", target: postId, metadata: { reason } });
+  const logAuditMeta = { actor, action: "review.rejected", target: postId, metadata: { reason } };
+  await logAudit(logAuditMeta);
 
-  return { postId, status: "rejected", reviewReason: reason, runId: run?.id ?? null, revisionId: rev.id };
+  return { postId, status: "rejected", reviewReason: reason, runId: post.agentRunId ?? null, revisionId: rev.id };
 }
 
 export async function regenerateArticle(

@@ -238,6 +238,13 @@ export async function setPostStatus(id: string, status: PostStatus, actor = "adm
   await logAudit({ actor, action: `post.status.${status}`, target: id });
 
   if (existing) {
+    // Any publish transition finalizes ALL waiting_for_human runs linked to
+    // this post (regenerations included) — the human decision happened, so no
+    // run may remain "waiting for human" in Admin → Agent Runs.
+    if (status === "published" && existing.status !== "published") {
+      const { finalizeWaitingRunsForPost } = await import("./agent-runs");
+      await finalizeWaitingRunsForPost(id);
+    }
     const docStatus = status === "published" ? "active" : "inactive";
     await syncKnowledgeFromPost(
       { ...existing, status } as typeof posts.$inferSelect,
