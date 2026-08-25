@@ -31,7 +31,8 @@ const DEFAULT_PROMPTS: AgentPrompt[] = [
       "Given the chosen article idea, define the angle, target audience, tone, key points and a section outline.\n" +
       "The angle must be specific, evidence-led and grounded in the topic.\n" +
       "Output language must match the Language field in the request.\n" +
-      "Return a JSON object: { \"angle\": string, \"audience\": string, \"tone\": string, \"keyPoints\": string[], \"outline\": string[] }.",
+      "Return a JSON object: { \"angle\": string, \"audience\": string, \"tone\": string, \"keyPoints\": string[], \"outline\": string[] }.\n" +
+      "IMPORTANT: every item in \"keyPoints\" and \"outline\" must be a single plain STRING section heading or point. NEVER return objects inside these arrays.",
   },
   {
     key: "researcher",

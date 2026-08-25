@@ -2,6 +2,7 @@ import type { ZodType } from "zod";
 import type { ChatMessage, ModelPurpose } from "./types";
 import { routerChat, type RouterChatOptions } from "./router";
 import { ValidationError, errorMessage } from "./errors";
+import { zodToJsonSchema } from "./json-schema";
 
 export type StructuredPurpose = Exclude<ModelPurpose, "embedding" | "voice">;
 
@@ -29,6 +30,10 @@ function schemaFields<T>(schema: ZodType<T>): string[] {
   return shape ? Object.keys(shape) : [];
 }
 
+/**
+ * Compact key -> null hint. Kept ONLY as the demo-model (mock provider)
+ * contract: the mock fills these keys with deterministic demo content.
+ */
 function schemaHint<T>(schema: ZodType<T>): string {
   const fields = schemaFields(schema);
   const obj: Record<string, null> = {};
@@ -36,13 +41,25 @@ function schemaHint<T>(schema: ZodType<T>): string {
   return JSON.stringify(obj);
 }
 
-function buildJsonInstruction<T>(schema: ZodType<T>): string {
+/**
+ * The exact JSON Schema derived from the Zod contract. This one object is used
+ * for the provider structured-output request AND restated in the prompt, so
+ * the model, the parser and the validator all agree on one shape.
+ */
+function buildProviderSchema<T>(schema: ZodType<T>): { schema: Record<string, unknown>; strictSafe: boolean; schemaJson: string } {
+  const generated = zodToJsonSchema(schema);
+  const schemaJson = JSON.stringify(generated.schema, null, 2);
+  return { schema: generated.schema, strictSafe: generated.strictSafe, schemaJson };
+}
+
+function buildJsonInstruction<T>(schema: ZodType<T>, schemaJson: string): string {
   return (
-    "Return a single JSON object that matches the schema below. " +
+    "Return a single JSON object that matches EXACTLY the JSON_SCHEMA below. " +
+    "Respect every declared type precisely — strings must be plain strings, arrays of strings must contain ONLY strings (never objects), numbers must be numbers. " +
     "Every field is REQUIRED and must be a real value of the correct type — never null, never omitted, never a placeholder. " +
     "If you do not know a field, produce your best factual content for it; do NOT use null. " +
-    "Do not wrap it in markdown code fences. Output only JSON, nothing else.\n\n" +
-    `JSON_SCHEMA:\n${schemaHint(schema)}`
+    "Do not add extra properties. Do not wrap it in markdown code fences. Output only JSON, nothing else.\n\n" +
+    `JSON_SCHEMA:\n${schemaJson}`
   );
 }
 
@@ -68,24 +85,29 @@ function extractJson(raw: string): unknown {
 
 function appendSchemaToLastMessage(
   messages: ChatMessage[],
-  schemaJson: string,
+  hintJson: string,
   instruction: string,
   repair?: string
 ): ChatMessage[] {
   const last = messages[messages.length - 1];
   const prefix = repair
-    ? `${last.content}\n\nYour previous output was INVALID: ${repair}\nFix it now. ${instruction}\n\n`
+    ? `${last.content}\n\nYour previous output was INVALID: ${repair}\nFix it now. Follow JSON_SCHEMA exactly.\n\n`
     : `${last.content}\n\n${instruction}\n\n`;
-  const content = `${prefix}[SCHEMA]\n${schemaJson}\n[/SCHEMA]`;
+  const content = `${prefix}[SCHEMA]\n${hintJson}\n[/SCHEMA]`;
   return [...messages.slice(0, -1), { role: "user", content }];
 }
 
 /**
  * Ask the model for a JSON object validated against a Zod schema.
  *
- * Robustness contract:
- * - Up to 1 + MAX_REPAIR_RETRIES attempts against the SAME provider/model.
- * - Every failed parse/validation produces an explicit repair request that
+ * Contract consistency:
+ * - ONE canonical shape exists: the Zod contract. `zodToJsonSchema` derives the
+ *   machine-readable schema from it, which is sent to the provider via native
+ *   structured output (`response_format: json_schema`) AND restated in the
+ *   prompt. Parsing + strict Zod validation use the same contract.
+ * - Robustness contract:
+ *   Up to 1 + MAX_REPAIR_RETRIES attempts against the SAME provider/model.
+ *   Every failed parse/validation produces an explicit repair request that
  *   restates the exact schema and demands valid JSON with no nulls.
  * - Missing fields are NEVER fabricated or defaulted — validation is strict.
  * - If all attempts fail, the actual error from the last attempt is thrown so
@@ -95,10 +117,11 @@ export async function generateStructured<T>(
   schema: ZodType<T>,
   opts: StructuredOptions
 ): Promise<{ data: T; retries: number; attempts: StructuredAttemptInfo[] }> {
-  const schemaJson = schemaHint(schema);
-  const instruction = buildJsonInstruction(schema);
+  const { schema: providerSchema, strictSafe, schemaJson } = buildProviderSchema(schema);
+  const hintJson = schemaHint(schema);
+  const instruction = buildJsonInstruction(schema, schemaJson);
 
-  let messages = appendSchemaToLastMessage(opts.messages, schemaJson, instruction);
+  let messages = appendSchemaToLastMessage(opts.messages, hintJson, instruction);
   let lastError = "";
   let lastProvider = "unknown";
   let lastModel = "unknown";
@@ -113,7 +136,7 @@ export async function generateStructured<T>(
         purpose: opts.purpose,
         messages,
         json: true,
-        jsonSchema: schemaJson,
+        jsonSchema: { name: `${opts.purpose}_output`, strict: strictSafe, schema: providerSchema },
         onErrorAttempt: (info) => {
           // Record which provider/model actually got the failed HTTP call.
           lastProvider = info.provider;
@@ -157,7 +180,7 @@ export async function generateStructured<T>(
       if (attempt < MAX_REPAIR_RETRIES) {
         messages = appendSchemaToLastMessage(
           opts.messages,
-          schemaJson,
+          hintJson,
           instruction,
           lastError.slice(0, 300)
         );

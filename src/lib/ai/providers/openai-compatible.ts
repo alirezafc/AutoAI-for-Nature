@@ -18,6 +18,30 @@ export interface OpenAiCompatibleConfig {
   defaultEmbeddingModel?: string;
 }
 
+/**
+ * Shape produced by lib/ai/structured-output.ts: a JSON Schema derived from the
+ * application's Zod contract plus whether it is safe for `strict` mode.
+ */
+interface StructuredOutputSchema {
+  name: string;
+  strict: boolean;
+  schema: Record<string, unknown>;
+}
+
+function asStructuredOutputSchema(jsonSchema: unknown): StructuredOutputSchema | null {
+  if (!jsonSchema || typeof jsonSchema !== "object" || Array.isArray(jsonSchema)) return null;
+  const candidate = jsonSchema as { name?: unknown; strict?: unknown; schema?: unknown };
+  if (
+    typeof candidate.name === "string" &&
+    typeof candidate.strict === "boolean" &&
+    candidate.schema &&
+    typeof candidate.schema === "object"
+  ) {
+    return { name: candidate.name, strict: candidate.strict, schema: candidate.schema as Record<string, unknown> };
+  }
+  return null;
+}
+
 export class OpenAiCompatibleProvider implements AIProvider {
   key: string;
   name: string;
@@ -136,7 +160,11 @@ export class OpenAiCompatibleProvider implements AIProvider {
     }
     const needsRetryNoJson =
       res.status === 400 &&
-      (lower.includes("response_format") || lower.includes("json_object") || lower.includes("not supported"));
+      (lower.includes("response_format") ||
+        lower.includes("json_object") ||
+        lower.includes("json_schema") ||
+        lower.includes("structured output") ||
+        lower.includes("not supported"));
     if (needsRetryNoJson) {
       throw new ProviderError("retry_no_json", message, res.status);
     }
@@ -150,48 +178,69 @@ export class OpenAiCompatibleProvider implements AIProvider {
     }
     const started = Date.now();
     const model = await this.resolveChatModel(params.model);
-    const body: Record<string, unknown> = {
-      model,
-      messages: params.messages.map((m) => ({ role: m.role, content: m.content })),
-      temperature: (params.temperature ?? 0.7) / 100,
-      max_tokens: params.maxTokens ?? 2048,
-      stream: false,
+    // Native structured output: the schema is the exact object derived from the
+    // application's Zod contract (see lib/ai/json-schema.ts), so provider-side
+    // enforcement and local validation can never disagree.
+    const structured = asStructuredOutputSchema(params.jsonSchema);
+    const responseFormatFor = (mode: "schema" | "object" | "none"): Record<string, unknown> | undefined => {
+      if (mode === "schema" && structured) {
+        return {
+          type: "json_schema",
+          json_schema: { name: structured.name, strict: structured.strict, schema: structured.schema },
+        };
+      }
+      if (mode === "object" && params.json) return { type: "json_object" };
+      return undefined;
+    };
+
+    const post = async (responseFormat?: Record<string, unknown>): Promise<Response> => {
+      const body: Record<string, unknown> = {
+        model,
+        messages: params.messages.map((m) => ({ role: m.role, content: m.content })),
+        temperature: (params.temperature ?? 0.7) / 100,
+        max_tokens: params.maxTokens ?? 2048,
+        stream: false,
+      };
+      if (responseFormat) body.response_format = responseFormat;
+      return fetch(this.chatEndpoint(), {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify(body),
+        signal: params.signal,
+      });
+    };
+    const formatRejected = async (res: Response): Promise<boolean> => {
+      if (res.status !== 400) return false;
+      const text = await res.clone().text().catch(() => "");
+      const lower = text.toLowerCase();
+      return (
+        lower.includes("response_format") ||
+        lower.includes("json_schema") ||
+        lower.includes("json_object") ||
+        lower.includes("structured output")
+      );
     };
 
     let res: Response;
     if (params.json) {
-      body.response_format = { type: "json_object" };
-      res = await fetch(this.chatEndpoint(), {
-        method: "POST",
-        headers: this.headers(),
-        body: JSON.stringify(body),
-        signal: params.signal,
-      });
-      if (res.status === 400 && (res.headers.get("content-type") ?? "").includes("json")) {
-        const text = await res.text().catch(() => "");
-        if (text.toLowerCase().includes("response_format") || text.toLowerCase().includes("json_object")) {
-          delete body.response_format;
-          res = await fetch(this.chatEndpoint(), {
-            method: "POST",
-            headers: this.headers(),
-            body: JSON.stringify(body),
-            signal: params.signal,
-          });
-        } else {
-          throw new ProviderError(PROVIDER_ERROR_CODES.API_FAILURE, text, 400);
+      // Attempt tier: json_schema -> json_object -> no response_format.
+      res = await post(responseFormatFor(structured ? "schema" : "object"));
+      if (!(await formatRejected(res))) {
+        if (!res.ok) await this.parseError(res, `HTTP ${res.status}`);
+      } else {
+        res = await post(responseFormatFor("object"));
+        if (await formatRejected(res)) {
+          res = await post(undefined);
+          if (!res.ok) await this.parseError(res, `HTTP ${res.status}`);
+        } else if (!res.ok) {
+          await this.parseError(res, `HTTP ${res.status}`);
         }
       }
     } else {
-      res = await fetch(this.chatEndpoint(), {
-        method: "POST",
-        headers: this.headers(),
-        body: JSON.stringify(body),
-        signal: params.signal,
-      });
-    }
-
-    if (!res.ok) {
-      await this.parseError(res, `HTTP ${res.status}`);
+      res = await post(undefined);
+      if (!res.ok) {
+        await this.parseError(res, `HTTP ${res.status}`);
+      }
     }
 
     const data = (await res.json()) as {
