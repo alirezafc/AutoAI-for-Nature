@@ -1,4 +1,4 @@
-import { getPost, updatePost, setPostStatus, createPostRevision, type PostStatus } from "./posts";
+import { getPost, updatePost, createPostRevision, type PostStatus } from "./posts";
 import { getRunWithSteps, updateRun } from "./agent-runs";
 import { startRegeneration } from "@/lib/agents/engine";
 import { syncPublishedPostToKnowledge } from "@/lib/rag";
@@ -38,14 +38,16 @@ export async function approveArticle(postId: string, actor = "admin"): Promise<R
     },
     actor
   );
-  await setPostStatus(postId, "published", actor);
 
   // Publish -> Knowledge: index the article with the REAL embedding provider so
-  // the chatbot retrieves the actual article as a source. A failure here must
-  // be reported, never silently ignored.
+  // the chatbot retrieves the actual article as a source. Re-read AFTER the
+  // status change so the sync always sees the published state and final
+  // content. A failure here must be reported, never silently ignored.
   let indexing: ReviewResult["indexing"];
   try {
-    indexing = await syncPublishedPostToKnowledge(post, `publish-${postId}`);
+    const published = await getPost(postId);
+    if (!published) throw new Error("Article disappeared during publish");
+    indexing = await syncPublishedPostToKnowledge(published, `publish-${postId}`);
   } catch (err) {
     indexing = { error: err instanceof Error ? err.message : String(err) };
   }

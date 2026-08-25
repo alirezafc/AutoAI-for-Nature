@@ -81,6 +81,12 @@ export async function updateKnowledgeDocument(
       ...(input.content !== undefined ? { content: input.content } : {}),
       ...(input.language !== undefined ? { language: input.language } : {}),
       ...(input.author !== undefined ? { author: input.author } : {}),
+      // Canonical source-type/status translation (e.g. draft_article -> article
+      // when the linked post is approved and published). These do NOT
+      // invalidate existing embeddings — only content changes do.
+      ...(input.sourceType !== undefined ? { sourceType: input.sourceType } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.postId !== undefined ? { postId: input.postId } : {}),
       // content changed -> embedding is stale until re-indexed
       ...(input.content !== undefined
         ? { indexedAt: null, chunkCount: 0, embeddingProvider: null, embeddingModel: null, embeddingDimensions: null }
@@ -407,26 +413,33 @@ export interface PostKnowledgeSync {
  * Mirror a published post into the knowledge base and (re-)index it with the
  * currently configured REAL embedding provider, so the chatbot can retrieve
  * the actual article as a source. Re-publishing an already-synced post updates
- * the existing document instead of duplicating it.
+ * the existing document instead of duplicating it — and PROMOTES it from the
+ * pre-publication state (draft_article/inactive) to the canonical published
+ * state (article/active). Indexing failures propagate: publish-time callers
+ * must never pretend indexing succeeded.
  */
 export async function syncPublishedPostToKnowledge(
-  post: Pick<Post, "id" | "title" | "content" | "language"> & { authorName?: string | null },
+  post: Pick<Post, "id" | "title" | "content" | "language" | "status"> & { authorName?: string | null },
   runId = "publish"
 ): Promise<PostKnowledgeSync> {
   const docs = await listKnowledgeDocuments();
   const existing = docs.find((d) => d.postId === post.id);
+  // Canonical content representation shared with syncKnowledgeFromPost.
+  const content = `${post.title}\n\n${post.content}`;
   let docId: string;
   if (existing) {
     const updated = await updateKnowledgeDocument(existing.id, {
       title: post.title,
-      content: post.content,
+      content,
       language: (post.language as "en" | "fa") ?? "en",
+      sourceType: "article",
+      status: "active",
     });
     docId = updated.id;
   } else {
     const doc = await createKnowledgeDocument({
       title: post.title,
-      content: post.content,
+      content,
       language: (post.language as "en" | "fa") ?? "en",
       author: post.authorName ?? "AutoAI",
       sourceType: "article",
@@ -461,7 +474,10 @@ export async function syncKnowledgeFromPost(post: Post, status: "active" | "inac
     .where(eq(knowledgeDocuments.postId, post.id))
     .limit(1);
   const doc = existing[0];
-  const sourceType = status === "active" ? "article" : "draft_article";
+  // Canonical translation: a published post is an "article" knowledge source;
+  // anything not yet published stays a "draft_article". Content always mirrors
+  // the live post so title/content can never drift from it.
+  const sourceType = post.status === "published" ? "article" : "draft_article";
   const content = `${post.title}\n\n${post.content}`;
 
   if (doc) {
@@ -472,7 +488,7 @@ export async function syncKnowledgeFromPost(post: Post, status: "active" | "inac
         content,
         language: post.language as "en" | "fa",
         status,
-        sourceType: post.status === "published" ? "article" : "draft_article",
+        sourceType,
         updatedAt: new Date(),
         indexedAt: null,
         chunkCount: 0,
@@ -482,7 +498,7 @@ export async function syncKnowledgeFromPost(post: Post, status: "active" | "inac
       })
       .where(eq(knowledgeDocuments.id, doc.id));
     if (status === "active") {
-      await indexDocument(doc.id, "sync-post-update").catch(() => {});
+      await indexDocument(doc.id, "sync-post-update");
     }
   } else {
     const inserted = await c.db
@@ -492,13 +508,13 @@ export async function syncKnowledgeFromPost(post: Post, status: "active" | "inac
         content,
         language: post.language as "en" | "fa",
         status,
-        sourceType: post.status === "published" ? "article" : "draft_article",
+        sourceType,
         postId: post.id,
         author: post.authorName,
       })
       .returning();
     if (inserted[0] && status === "active") {
-      await indexDocument(inserted[0].id, "sync-post-create").catch(() => {});
+      await indexDocument(inserted[0].id, "sync-post-create");
     }
   }
 }

@@ -4,6 +4,7 @@ import { getDb } from "@/db/client";
 import { slugify } from "@/lib/utils";
 import { syncKnowledgeFromPost } from "@/lib/rag";
 import { logAudit } from "./audit";
+import { logger } from "@/lib/logging";
 
 export type PostStatus = "draft" | "published" | "needs_review" | "rejected";
 
@@ -205,6 +206,20 @@ export async function updatePost(id: string, input: PostPatch, actor = "admin") 
     .where(eq(posts.id, id))
     .returning();
   await logAudit({ actor, action: "post.updated", target: id });
+  // Keep the knowledge mirror persistent: an edit to a PUBLISHED article must
+  // be reflected in RAG (re-chunked + re-embedded), never left stale. Failures
+  // are logged loudly — never silently ignored.
+  if (
+    input.content !== undefined &&
+    input.content !== existing?.content &&
+    post?.status === "published"
+  ) {
+    try {
+      await syncKnowledgeFromPost(post as typeof posts.$inferSelect, "active");
+    } catch (err) {
+      logger.error(`knowledge re-sync failed for published post ${id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   return post;
 }
 

@@ -82,16 +82,35 @@ export async function deleteConversation(id: string): Promise<void> {
   await c.db.delete(conversations).where(eq(conversations.id, id));
 }
 
-export async function countRagQueries(): Promise<number> {
+/**
+ * Persisted counter of ACTUAL RAG retrieval executions (chatbot questions that
+ * really went through vector retrieval, including attempts that ended without
+ * a relevant hit). Stored in system_settings so no schema change is required;
+ * incremented atomically right after a retrieval runs and never for requests
+ * that skip retrieval.
+ */
+export const RAG_QUERY_METRIC_KEY = "metrics.rag.queries";
+
+export async function incrementRagQueryMetric(): Promise<void> {
   const { raw } = await import("@/db/client");
+  await raw(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, '1'::jsonb, now())
+     ON CONFLICT (key) DO UPDATE
+       SET value = to_jsonb((system_settings.value #>> '{}')::int + 1),
+           updated_at = now()`,
+    [RAG_QUERY_METRIC_KEY]
+  );
+}
+
+export async function countRagQueries(): Promise<number> {
   try {
-    const rows = await raw<{ count: number }>(
-      `SELECT count(DISTINCT c.id)::int AS count
-       FROM conversations c
-       JOIN messages m ON m.conversation_id = c.id
-       WHERE m.role = 'assistant' AND jsonb_array_length(m.sources) > 0`
+    const { raw } = await import("@/db/client");
+    const rows = await raw<{ value: unknown }>(
+      `SELECT value FROM system_settings WHERE key = $1`,
+      [RAG_QUERY_METRIC_KEY]
     );
-    return rows[0]?.count ?? 0;
+    return Number(rows[0]?.value ?? 0) || 0;
   } catch {
     return 0;
   }
