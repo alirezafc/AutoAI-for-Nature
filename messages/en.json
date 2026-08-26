@@ -573,7 +573,17 @@
       "measuredLatency": "Measured latency",
       "catalogTitle": "Voice model catalog",
       "kind": "Kind",
-      "capabilities": "Capabilities"
+      "capabilities": "Capabilities",
+      "statusTitle": "Voice engine status",
+      "sttLabel": "Speech-to-text",
+      "ttsLabel": "Text-to-speech",
+      "browserWebSpeech": "Browser Web Speech API",
+      "llmEngine": "LLM engine",
+      "llmEngineUnset": "Not configured",
+      "llmEngineHint": "Resolved from Admin → Models (role: Voice LLM)",
+      "languagesLabel": "Supported languages",
+      "settingsTitle": "Settings",
+      "systemPromptPlaceholder": "Optional override for the built-in spoken-assistant prompt"
     },
     "mcp": {
       "title": "MCP Server",

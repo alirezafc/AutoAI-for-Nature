@@ -28,6 +28,52 @@ export async function getVoiceConfig() {
   return rows[0] ?? null;
 }
 
+/**
+ * V1 Voice Agent reality contract.
+ *
+ * The ONLY fields the current implementation actually consumes are:
+ *   - ragEnabled    (gates RAG retrieval in getVoiceReply)
+ *   - systemPrompt  (overrides the built-in spoken-assistant prompt)
+ *   - temperature   (passed to routerChat)
+ *
+ * STT/TTS run entirely in the BROWSER via the Web Speech API (public /voice
+ * page) — server-side stt/tts/voice/speed columns and llmProvider/llmModel
+ * fields are NOT consumed (the LLM is resolved per-purpose through Admin →
+ * Models, purpose "voice"). They must never resurface as fake settings.
+ */
+export interface VoiceSettings {
+  ragEnabled: boolean;
+  systemPrompt: string;
+  temperature: number;
+}
+
+export interface VoiceStatusInfo {
+  stt: string;
+  tts: string;
+  languages: ("en" | "fa")[];
+  conversationSaving: boolean;
+}
+
+export const VOICE_STATUS: VoiceStatusInfo = {
+  stt: "browser-web-speech",
+  tts: "browser-web-speech",
+  languages: ["en", "fa"],
+  conversationSaving: false,
+};
+
+export function resolveVoiceSettings(
+  config: Partial<Pick<VoiceConfigInput, "ragEnabled" | "systemPrompt" | "temperature">> | null | undefined
+): VoiceSettings {
+  return {
+    ragEnabled: config?.ragEnabled !== false,
+    systemPrompt: typeof config?.systemPrompt === "string" ? config.systemPrompt : "",
+    temperature:
+      typeof config?.temperature === "number" && Number.isFinite(config.temperature)
+        ? config.temperature
+        : 50,
+  };
+}
+
 export async function setVoiceConfig(input: VoiceConfigInput) {
   const c = await getDb();
   const existing = await getVoiceConfig();

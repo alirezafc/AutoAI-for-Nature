@@ -560,7 +560,7 @@
       "ttsProvider": "ارائه‌دهنده سنتز گفتار",
       "ttsModel": "مدل سنتز گفتار",
       "voice": "صدا",
-      "temperature": "دما",
+      "temperature": "دمای پاسخ",
       "speed": "سرعت گفتار",
       "greeting": "عبارت خوش‌آمد",
       "systemPrompt": "پرامپت سیستم",
@@ -573,7 +573,17 @@
       "measuredLatency": "تأخیر اندازه‌گیری شده",
       "catalogTitle": "کاتالوگ مدل‌های صوتی",
       "kind": "نوع",
-      "capabilities": "قابلیت‌ها"
+      "capabilities": "قابلیت‌ها",
+      "statusTitle": "وضعیت موتور صوتی",
+      "sttLabel": "تبدیل گفتار به متن",
+      "ttsLabel": "تبدیل متن به گفتار",
+      "browserWebSpeech": "Web Speech API مرورگر",
+      "llmEngine": "موتور زبانی",
+      "llmEngineUnset": "پیکربندی نشده",
+      "llmEngineHint": "از بخش مدیریت ← مدل‌ها تعیین می‌شود (نقش: مدل صوتی)",
+      "languagesLabel": "زبان‌های پشتیبانی‌شده",
+      "settingsTitle": "تنظیمات",
+      "systemPromptPlaceholder": "در صورت نیاز، جایگزین پرامپت پیش‌فرض دستیار صوتی"
     },
     "mcp": {
       "title": "سرور MCP",

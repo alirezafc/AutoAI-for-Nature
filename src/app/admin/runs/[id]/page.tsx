@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
+import { canViewArticle } from "@/lib/runs/view-article";
 
 type Step = {
   id: string;
@@ -35,6 +36,10 @@ type Run = {
   runType: string;
   categoryId?: string | null;
   postId?: string | null;
+  /** Persisted posts.status for postId (null while the reserved draft is empty). */
+  postStatus?: string | null;
+  /** Whether the persisted post body has real content. */
+  postHasContent?: boolean;
   createdAt: string;
   startedAt?: string | null;
   finishedAt?: string | null;
@@ -106,6 +111,12 @@ export default function RunDetailPage() {
   const totalDuration = run.durationMs ?? sumDurations(run.steps);
   const failed = run.status === "failed";
   const active = run.status === "running" || run.status === "queued";
+  // Real persisted post state decides — never timers or client assumptions.
+  const showViewArticle = canViewArticle({
+    postId: run.postId,
+    postStatus: run.postStatus,
+    postHasContent: run.postHasContent,
+  });
 
   return (
     <div className="space-y-6">
@@ -138,7 +149,7 @@ export default function RunDetailPage() {
               ? t("common.waitingForHuman")
               : t(`common.${run.status}`)}
           </Badge>
-          {run.postId && (
+          {showViewArticle && (
             <Button asChild size="sm" variant="outline">
               <Link href={`/admin/posts/${run.postId}`}>{t("admin.agentRuns.viewArticle")}</Link>
             </Button>

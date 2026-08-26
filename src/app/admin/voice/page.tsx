@@ -4,40 +4,52 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/components/i18n/intl-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Input, Label, Textarea } from "@/components/ui/input";
+import { Mic, Volume2 } from "lucide-react";
 
-type VoiceConfig = {
-  sttProvider: string;
-  sttModel: string;
-  llmProvider: string;
-  llmModel: string;
-  ttsProvider: string;
-  ttsModel: string;
-  voice: string;
-  temperature: number;
-  speed: number;
-  greeting: string;
-  systemPrompt: string;
+/** Only the fields the V1 voice implementation actually consumes. */
+type VoiceSettings = {
   ragEnabled: boolean;
-  saveConversations: boolean;
+  systemPrompt: string;
+  temperature: number;
+};
+
+type VoiceStatus = {
+  stt: string;
+  tts: string;
+  languages: ("en" | "fa")[];
+  conversationSaving: boolean;
 };
 
 export default function VoicePage() {
   const { t } = useI18n();
-  const [config, setConfig] = useState<VoiceConfig | null>(null);
+  const [config, setConfig] = useState<VoiceSettings | null>(null);
+  const [engine, setEngine] = useState<{ provider: string; model: string }>({ provider: "", model: "" });
+  const [status, setStatus] = useState<VoiceStatus | null>(null);
   const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/admin/voice");
-      const data = await res.json();
-      if (data.config) setConfig(data.config);
+      try {
+        const res = await fetch("/api/admin/voice");
+        const data = await res.json();
+        if (!res.ok) {
+          setLoadError(data.error ?? t("common.error"));
+          return;
+        }
+        setConfig(data.config);
+        setStatus(data.status ?? null);
+        setEngine(data.engine ?? { provider: "", model: "" });
+      } catch {
+        setLoadError(t("common.error"));
+      }
     })();
-  }, []);
-
-  if (!config) return null;
+  }, [t]);
 
   async function save() {
+    if (!config) return;
     const res = await fetch("/api/admin/voice", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -56,89 +68,93 @@ export default function VoicePage() {
         <p className="text-sm text-muted-foreground">{t("admin.voice.subtitle")}</p>
       </div>
 
+      {loadError && <p className="text-sm text-destructive">{loadError}</p>}
+
+      {/* Real capability status — browser Web Speech API + live LLM engine */}
       <Card>
-        <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.sttProvider")}</Label>
-            <Input
-              value={config.sttProvider}
-              onChange={(e) => setConfig({ ...config, sttProvider: e.target.value })}
-              placeholder="browser"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.sttModel")}</Label>
-            <Input value={config.sttModel} onChange={(e) => setConfig({ ...config, sttModel: e.target.value })} placeholder="web-speech" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.llmProvider")}</Label>
-            <Input value={config.llmProvider} onChange={(e) => setConfig({ ...config, llmProvider: e.target.value })} placeholder="mock" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.llmModel")}</Label>
-            <Input value={config.llmModel} onChange={(e) => setConfig({ ...config, llmModel: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.ttsProvider")}</Label>
-            <Input value={config.ttsProvider} onChange={(e) => setConfig({ ...config, ttsProvider: e.target.value })} placeholder="browser" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.ttsModel")}</Label>
-            <Input value={config.ttsModel} onChange={(e) => setConfig({ ...config, ttsModel: e.target.value })} placeholder="web-speech" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.voice")}</Label>
-            <Input value={config.voice ?? ""} onChange={(e) => setConfig({ ...config, voice: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.speed")}</Label>
-            <Input
-              type="number"
-              step="0.1"
-              min="0.5"
-              max="2"
-              value={config.speed ?? 1}
-              onChange={(e) => setConfig({ ...config, speed: Number(e.target.value) })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.greeting")}</Label>
-            <Input value={config.greeting ?? ""} onChange={(e) => setConfig({ ...config, greeting: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("admin.voice.systemPrompt")}</Label>
-            <Textarea
-              value={config.systemPrompt ?? ""}
-              onChange={(e) => setConfig({ ...config, systemPrompt: e.target.value })}
-            />
+        <CardContent className="space-y-3 p-5">
+          <h2 className="font-semibold">{t("admin.voice.statusTitle")}</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border p-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Mic className="h-4 w-4 text-primary" /> {t("admin.voice.sttLabel")}
+              </div>
+              <Badge variant="secondary" className="mt-2">
+                {t("admin.voice.browserWebSpeech")}
+              </Badge>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Volume2 className="h-4 w-4 text-primary" /> {t("admin.voice.ttsLabel")}
+              </div>
+              <Badge variant="secondary" className="mt-2">
+                {t("admin.voice.browserWebSpeech")}
+              </Badge>
+            </div>
+            <div className="rounded-lg border p-3 text-sm">
+              <div className="font-medium">{t("admin.voice.llmEngine")}</div>
+              <div className="mt-1 text-muted-foreground">
+                {engine.provider ? `${engine.provider} / ${engine.model}` : t("admin.voice.llmEngineUnset")}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{t("admin.voice.llmEngineHint")}</p>
+            </div>
+            <div className="rounded-lg border p-3 text-sm">
+              <div className="font-medium">{t("admin.voice.languagesLabel")}</div>
+              <div className="mt-1 flex gap-2">
+                {(status?.languages ?? ["en", "fa"]).map((l) => (
+                  <Badge key={l} variant="outline">
+                    {l === "fa" ? "فارسی" : "English"}
+                  </Badge>
+                ))}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="flex flex-wrap items-center gap-4 p-5">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={config.ragEnabled !== false}
-              onChange={(e) => setConfig({ ...config, ragEnabled: e.target.checked })}
-            />
-            {t("admin.voice.ragEnabled")}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={config.saveConversations !== false}
-              onChange={(e) => setConfig({ ...config, saveConversations: e.target.checked })}
-            />
-            {t("admin.voice.saveConversations")}
-          </label>
-          <Button onClick={save} className="ml-auto">
-            {t("common.save")}
-          </Button>
-          {saved && <span className="text-sm text-primary">{t("admin.voice.saved")}</span>}
-        </CardContent>
-      </Card>
+      {/* Real configurable surface */}
+      {!config ? (
+        <Card>
+          <CardContent className="p-5 text-sm text-muted-foreground">{t("common.loading")}</CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="space-y-4 p-5">
+            <h2 className="font-semibold">{t("admin.voice.settingsTitle")}</h2>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={config.ragEnabled}
+                onChange={(e) => setConfig({ ...config, ragEnabled: e.target.checked })}
+              />
+              {t("admin.voice.ragEnabled")}
+            </label>
+            <div className="space-y-1.5">
+              <Label>{t("admin.voice.systemPrompt")}</Label>
+              <Textarea
+                rows={4}
+                value={config.systemPrompt}
+                onChange={(e) => setConfig({ ...config, systemPrompt: e.target.value })}
+                placeholder={t("admin.voice.systemPromptPlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("admin.voice.temperature")}</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={config.temperature}
+                onChange={(e) => setConfig({ ...config, temperature: Number(e.target.value) })}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Button onClick={save}>{t("common.save")}</Button>
+              {saved && <span className="text-sm text-primary">{t("admin.voice.saved")}</span>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
