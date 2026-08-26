@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoAI for Nature — بستهٔ تحویل و ارزیابی پروژه</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 18mm; }
+  :root{
+    --navy:#14355f; --navy2:#0e2745; --blue:#2563eb; --ink:#1f2937; --ink2:#5b6774;
+    --line:#dbe2ea; --card:#f6f8fb; --accent:#0f6b4f;
+    --mono:Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:"Vazirmatn",Tahoma,Arial,sans-serif;color:var(--ink);background:#eef1f5;font-size:14px;line-height:1.95}
+  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:16mm 15mm;box-shadow:0 0 12px rgba(0,0,0,.08)}
+  h1,h2,h3{color:var(--navy);line-height:1.45;break-after:avoid-page}
+  h1{font-size:30px;margin:0 0 8px}
+  h2{font-size:21px;border-right:5px solid var(--blue);padding-right:12px;margin:34px 0 12px;break-after:avoid}
+  h3{font-size:16px;margin:20px 0 8px}
+  p{margin:8px 0;text-align:justify}
+  ul,ol{margin:8px 0;padding-right:22px}
+  li{margin:4px 0}
+  code,.tech{font-family:var(--mono);direction:ltr;unicode-bidi:isolate;font-size:.88em;background:var(--card);padding:1px 6px;border-radius:4px;display:inline-block}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;break-inside:avoid}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:right;vertical-align:top}
+  th{background:var(--card);color:var(--navy)}
+  .cover{min-height:250mm;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-bottom:3px solid var(--navy)}
+  .cover .brand{font-size:40px;font-weight:900;color:var(--navy);letter-spacing:.01em}
+  .cover .en{font-family:var(--mono);direction:ltr;font-size:16px;color:var(--ink2);margin-top:6px}
+  .cover .client{margin-top:34px;font-size:18px}
+  .cover .meta{margin-top:22px;color:var(--ink2);font-size:13.5px;line-height:2}
+  .badge{display:inline-block;background:var(--card);border:1px solid var(--line);color:var(--navy);
+    border-radius:999px;padding:3px 14px;font-size:12.5px;margin:4px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0;break-inside:avoid}
+  .callout{border-right:4px solid var(--blue);background:var(--card);padding:10px 14px;border-radius:6px;margin:12px 0;break-inside:avoid}
+  .warn{border-right-color:#c98a1b;background:#fdf6e3}
+  .flow{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;text-align:center;
+    font-weight:500;break-inside:avoid;font-size:13.5px;line-height:2.05}
+  .flow span{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 12px;margin:3px}
+  .flow .arr{display:block;color:var(--blue);font-weight:900}
+  .who{display:flex;gap:10px;margin:6px 0 14px;flex-wrap:wrap}
+  .who div{flex:1;min-width:180px}
+  .time{font-family:var(--mono);direction:ltr;unicode-bidi:isolate;color:var(--blue);font-weight:700}
+  .speaker-c{color:var(--navy);font-weight:700}
+  .speaker-t{color:var(--accent);font-weight:700}
+  .v2tag{display:inline-block;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:4px;padding:0 8px;font-size:11.5px}
+  .cred{border:2px solid var(--navy);border-radius:10px;padding:16px 18px;background:#f4f7fc;break-inside:avoid}
+  .cred td:first-child{width:38mm;font-weight:700;color:var(--navy)}
+  .steps ol{counter-reset:s;list-style:none;padding-right:0}
+  .steps>li{counter-increment:s;position:relative;padding:10px 46px 10px 12px;border:1px solid var(--line);border-radius:10px;margin:10px 0;break-inside:avoid;background:#fff}
+  .steps>li::before{content:counter(s);position:absolute;right:10px;top:10px;width:26px;height:26px;border-radius:50%;
+    background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .checklist{columns:2;gap:24px}
+  .checklist li{break-inside:avoid;list-style:none;position:relative;padding-right:26px}
+  .checklist li::before{content:"☐";position:absolute;right:0;color:var(--accent);font-size:15px}
+  footer.doc{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:10.5px;color:var(--ink2);
+    border-top:1px solid var(--line);background:#fff;padding:4px}
+  .divider{height:6px;background:linear-gradient(to left,var(--navy),var(--blue));border-radius:3px;margin:36px 0 20px}
+  @media print{
+    body{background:#fff;font-size:12.5px}
+    .sheet{box-shadow:none;padding:0;max-width:none}
+    a{color:inherit;text-decoration:none}
+    .noprint{display:none!important}
+    h2{margin-top:22px}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <div class="brand">AutoAI for Nature</div>
+  <div class="en">AI-Native Content &amp; Knowledge Platform</div>
+  <hr style="width:70mm;border:none;border-top:2px solid var(--blue);margin:18px auto">
+  <div class="client">بستهٔ تحویل و ارزیابی پروژه<br><span style="font-size:14px;color:var(--ink2)">نسخهٔ ۱ — مستندات مشاوره، پیاده‌سازی و ارزیابی عملیاتی</span></div>
+  <div class="meta">
+    کارفرما / ارزیاب: رامین جمشیدی — دانشجوی کارشناسی ارشد منابع طبیعی<br>
+    تهیه‌کننده: تیم مهندسی AutoAI<br>
+    تاریخ تهیه: اوت ۲۰۲۶ (میلادی) · نسخه سند: ۱٫۰
+  </div>
+  <div style="margin-top:26px">
+    <span class="badge">۹ عامل هوشمند</span>
+    <span class="badge">Human Review</span>
+    <span class="badge">RAG + pgvector</span>
+    <span class="badge">دوزبانه فارسی/انگلیسی</span>
+    <span class="badge">استقرار عملیاتی</span>
+  </div>
+</div>
+
+<!-- ================= CONSULTATION ================= -->
+<h2>بخش ۱ — صورت‌جلسهٔ جلسهٔ مشاوره (کشف نیازمندی‌ها)</h2>
+<div class="who">
+  <div><b>مشتری:</b> رامین جمشیدی — کارشناسی ارشد منابع طبیعی</div>
+  <div><b>مشاور:</b> تیم AutoAI</div>
+  <div><b>مدت:</b> <span class="time">28 min</span></div>
+</div>
+
+<h3>۰۰:۰۰ تا ۰۵:۰۰ — کشف مسئله</h3>
+<p><span class="speaker-c">رامین:</span> من در حوزهٔ منابع طبیعی کار می‌کنم و درس‌های‌ام هم همین‌جاست. مدام باید متن‌های آموزشی و ترویجی دربارهٔ موضوعاتی مثل تنوع زیستی، تالاب‌ها یا تغییر اقلیم بنویسم؛ ولی وقت پژوهش دقیق کم است و کیفیت هم یکنواخت شده.</p>
+<p><span class="speaker-t">مشاور:</span> الان این متن‌ها را چطور تولید می‌کنید و گلوگاه اصلی کجاست؟</p>
+<p><span class="speaker-c">رامین:</span> ترکیبی از جست‌وجوی مقالات، یادداشت‌برداری و نوشتن دستی. برای هر مقاله چند ساعت تا چند روز زمان می‌برَد؛ منابع را هم باید دوباره بررسی کنم که مطمئن شوم چیزی اشتباه نقل نشده.</p>
+
+<h3>۰۵:۰۰ تا ۱۰:۰۰ — گردش‌کار فعلی و نقاط درد</h3>
+<p><span class="speaker-t">مشاور:</span> اگر بخواهم گردش‌کار را خلاصه کنم: انتخاب موضوع، جمع‌آوری منبع، نگارش، بازخوانی و در نهایت انتشار. کدام مرحله بیشترین هزینه را دارد؟</p>
+<p><span class="speaker-c">رامین:</span> دو جا. اول جمع‌آوری و ساختاردهی اطلاعات؛ دوم بازخوانی نهایی که معمولاً به تعویق انتشار می‌انجامد. اگر ابزاری باشد که پیش‌نویسِ مستند به منابع بدهد و من فقط بازبینی کنم، خیلی از بار کم می‌شود.</p>
+<p><span class="speaker-t">مشاور:</span> پس «بازبینی انسانی» برای شما یک قدم تشریفاتی نیست؛ بخشی از الزام کیفی است. این را به‌عنوان یک اصل طراحی ثبت می‌کنم: هیچ مطلبی بدون تأیید شما منتشر نشود.</p>
+
+<h3>۱۰:۰۰ تا ۱۵:۰۰ — کشف فرصت هوش مصنوعی</h3>
+<p><span class="speaker-c">رامین:</span> با این مدل‌های زبانی چه امکاناتی هست؟ شنیده‌ام متنی تولید می‌کنند ولی نمی‌دانم چقدر قابل اعتماد است.</p>
+<p><span class="speaker-t">مشاور:</span> مدل‌های زبانی در نگارش و ساختاردهی قوی هستند اما دو ضعف دارند: ممکن است واقعیت‌سازی کنند و پاسخشان خارج از حوزهٔ تخصصی شما هم باشد. راهکار حرفه‌ای این است که مدل بر پایهٔ یک «پایگاه دانش» اختصاصی پاسخ دهد — یعنی فقط از اسناد خود پروژه — و اگر پاسخ در آن نبود، صریحاً بگوید پیدا نشد.</p>
+<p><span class="speaker-c">رامین:</span> این دقیقاً چیزی است که می‌خواهم؛ نه یک چت‌بات عمومی. و چون مخاطبم فارسی‌زبان است ولی خیلی از منابع انگلیسی است، دوزبانه بودن هم مهم است.</p>
+
+<h3>۱۵:۰۰ تا ۲۰:۰۰ — بحث راهکار</h3>
+<p><span class="speaker-t">مشاور:</span> پیشنهاد من یک سامانهٔ وب با سه جزء است: یک خط تولید چندمرحله‌ای که هر مرحله یک «عامل» هوشمند با وظیفهٔ مشخص دارد — ایده، راهبرد، پژوهش، نگارش، نقد، سئو و … — سپس یک میز بازبینی برای تأیید شما، و در نهایت تبدیل مقالهٔ منتشرشده به پایگاه دانش که چک‌باتِ پرسش‌وپاسخ روی آن پاسخ می‌دهد.</p>
+<p><span class="speaker-c">رامین:</span> پس خروجی فقط یک متن نیست؛ سیستم به مرور یک حافظهٔ دانشی می‌سازد که بعداً هم می‌شود از آن پرسید.</p>
+<p><span class="speaker-t">مشاور:</span> دقیقاً. و چون همه‌چیز در یک پنل مدیریت ثبت می‌شود، فرایند شفاف است: می‌بینید کدام مرحله چه تولید کرده و چه مدتی طول کشیده.</p>
+
+<h3>۲۰:۰۰ تا ۲۵:۰۰ — محدودهٔ نسخهٔ اول و دوم</h3>
+<p><span class="speaker-c">رامین:</span> من به تصویرسازی خودکار و یک دستیار صوتی کامل هم فکر می‌کنم.</p>
+<p><span class="speaker-t">مشاور:</span> هر دو شدنی‌اند، اما توصیهٔ مهندسی من این است که نسخهٔ اول را روی چرخهٔ «تولید → بازبینی → انتشار → دانش → پرسش‌وپاسخ مبتنی بر دانش» قفل کنیم و قابلیت‌های صوتی را در حد پیاده‌سازی فعلیِ مبتنی بر مرورگر نگه داریم. تصویرسازی و صوت پیشرفته به نسخهٔ دوم منتقل می‌شود. این کار ریسک را کم می‌کند و تحویل را قطعی.</p>
+<p><span class="speaker-c">رامین:</span> موافقم؛ اول یک پایهٔ محکم و قابل ارزیابی.</p>
+
+<h3>۲۵:۰۰ تا ۲۸:۰۰ — جمع‌بندی و گام بعدی</h3>
+<p><span class="speaker-t">مشاور:</span> جمع‌بندی: سامانهٔ دوزبانه با خط تولید نه‌مرحله‌ای، بازبینی اجباری انسانی، پایگاه دانش برداری، چت مبتنی بر دانش با رفتار «عدم پاسخ به خارج از حوزه»، پنل مدیریت، و استقرار عملیاتی. فردا ظهر پروپوزال کامل شامل محدوده، معیارهای پذیرش و نقشهٔ راه نسخهٔ دوم را ارسال می‌کنم.</p>
+<p><span class="speaker-c">رامین:</span> بسیار خوب، منتظر پروپوزال هستم.</p>
+<div class="callout">ثبت شد — الزامات کلیدی: محتوای حوزهٔ منابع طبیعی · کاهش بار پژوهش · پیش‌نویسِ مستند · بازبینی اجباری انسانی · دوزبانه · پایگاه دانش ماندگار · پاسخ فقط از روی دانش پروژه · پنل مدیریت شفاف.</div>
+
+<!-- ================= FOLLOW-UP EMAIL ================= -->
+<h2>بخش ۲ — ایمیل پیگیری پس از جلسه</h2>
+<div class="card">
+<p><b>به:</b> رامین جمشیدی<br>
+<b>موضوع:</b> خلاصه جلسه مشاوره و زمان‌بندی ارسال پروپوزال پروژه AutoAI for Nature</p>
+<p>سلام رامین،</p>
+<p>از وقت و توضیحاتی که در جلسهٔ دیروز دادید سپاسگزارم. خلاصهٔ آنچه توافق کردیم:</p>
+<ul>
+<li><b>مسئله:</b> تولید مستمر محتوای تخصصی منابع طبیعی با بار پژوهشی بالا و چرخهٔ بازخوانی زمان‌بر.</li>
+<li><b>راهکار:</b> سامانهٔ «AutoAI for Nature»؛ یک خط تولید چندمرحله‌ای مبتنی بر عامل‌های هوشمند که پیش‌نویسِ مقاله را با استناد به پایگاه دانش آماده می‌کند.</li>
+<li><b>نسخهٔ اول:</b> تولید نه‌مرحله‌ای مقاله، بازبینی و تأیید انسانی پیش از انتشار، انتشار و تبدیل خودکار مقاله به پایگاه دانش، چتِ پاسخ‌گو بر اساس همان دانش (و امتناع آگاهانه از پاسخ به موضوعات خارج از حوزه)، پنل مدیریت دوزبانه فارسی/انگلیسی، بخش صوتی پایه مبتنی بر مرورگر.</li>
+<li><b>نسخهٔ دوم (آینده):</b> تصویرسازی و رسانه‌های غنی‌تر، دستیار صوتی پیشرفته، اتوماسیون و گزارش‌های تحلیلی تکمیلی. این موارد در V1 ارائه نمی‌شوند.</li>
+<li><b>اصل کلیدی طراحی:</b> هیچ مطلبی بدون تأیید شما منتشر نمی‌شود؛ نقش هوش مصنوعی تسریع تولید است، نه جایگزین داوری انسانی.</li>
+</ul>
+<p>طبق توافق، پروپوزال پروژه فردا ساعت ۱۲ ظهر ارسال خواهد شد. در پروپوزال، معیارهای پذیرش نسخهٔ اول را نیز به‌صورت قابل آزمون آورده‌ام تا ارزیابی دقیق و شفاف باشد.</p>
+<p>با احترام،<br>تیم مهندسی AutoAI</p>
+</div>
+
+<!-- ================= PROPOSAL ================= -->
+<div class="divider"></div>
+<h2>بخش ۳ — پروپوزال کامل پروژه</h3>
+
+<h3>۱) صفحه عنوان</h3>
+<div class="card">
+<b>AutoAI for Nature</b> — سامانهٔ هوشمند تولید و مدیریت محتوای علمی-ترویجی منابع طبیعی<br>
+پیشنهاد نسخهٔ ۱ (V1) · تهیه‌شده برای رامین جمشیدی · اوت ۲۰۲۶
+</div>
+
+<h3>۲) خلاصه اجرایی</h3>
+<p>AutoAI for Nature چرخهٔ تولید محتوای تخصصی منابع طبیعی را از «ایده» تا «انتشار» و سپس
+«پاسخ‌گویی مبتنی بر دانش» نیمه‌خودکار و با نظارت انسانی اجرا می‌کند. به‌جای یک فراخوانی ساده،
+نه عامل تخصصی ایده‌پردازی، راهبرد، پژوهش، نگارش، نقد، سئو، تصمیم انتشار، بازبینی نهایی و استخراج
+درس‌ها را انجام می‌دهند؛ خروجی پس از تأیید مدیر انسانی منتشر و خودکار به پایگاه دانش برداری افزوده
+می‌شود تا چت‌بات پروژه فقط بر اساس همان دانش و به دو زبان پاسخ دهد.</p>
+
+<h3>۳) معرفی مسئله</h3>
+<ul>
+<li>تولید مستمر محتوای معتبر منابع طبیعی با بار پژوهشی بالا.</li>
+<li>چرخهٔ بازخوانی زمان‌بر که انتشار را به تعویق می‌اندازد.</li>
+<li>پراکندگی دانش تولیدشده در فایل‌ها و عدم امکان پرسش‌وپاسخ بعدی روی آن.</li>
+<li>نیاز مخاطب دوزبانه (فارسی/انگلیسی) و حفظ کیفیت استنادی.</li>
+</ul>
+
+<h3>۴) اهداف پروژه</h3>
+<ul>
+<li>کاهش زمان تولید هر مقاله با حفظ کیفیت استنادی.</li>
+<li>ایجاد پایگاه دانش ماندگار از تمام مطالب منتشرشده.</li>
+<li>پاسخ‌گویی دقیقِ مبتنی بر دانش با ارجاع به منبع.</li>
+<li>شفافیت کامل فرایند برای مدیر انسانی.</li>
+<li>استقرار عملیاتی قابل ارزیابی.</li>
+</ul>
+
+<h3>۵) نیازمندی‌های شناسایی‌شده</h3>
+<ul>
+<li>ورودی: موضوع یا سرفصل در قالب متن کوتاه.</li>
+<li>خروجی: مقالهٔ ساختاریافته با عنوان، چکیده، بدنه، سئو و متادیتا.</li>
+<li>بازبینی اجباری انسانی پیش از انتشار.</li>
+<li>دوزبانگی فارسی/انگلیسی با جهت صحیح نمایش.</li>
+<li>پاسخ چت فقط از پایگاه دانش؛ در غیر این صورت اعلام عدم وجود.</li>
+<li>پنل مدیریت شامل داشبورد، مقالات، اجراها، دانش، مدل‌ها و صوت.</li>
+</ul>
+
+<h3>۶) راهکار پیشنهادی</h3>
+<p>معماری «اتاق تحریریهٔ دیجیتال»: نه عامل هوشمند با مسئولیت مجزا، یک لایهٔ بازبینی انسانی، و یک
+لایهٔ دانشِ برداری. زیرساخت: <span class="tech">Next.js</span> برای وب،
+<span class="tech">PostgreSQL + pgvector</span> روی <span class="tech">Neon</span> برای داده و بردارها،
+میزبانی <span class="tech">Vercel</span>، و درگاه واحد هوش مصنوعی
+<span class="tech">OpenRouter</span>.</p>
+
+<h3>۷) محدودهٔ نسخهٔ اول</h3>
+<p>چرخهٔ کامل «ایده تا پاسخ»، پنل مدیریت دوزبانه، بخش صوتی پایهٔ مرورگر، و استقرار عملیاتی.
+هر آنچه خارج از این چرخه است به نسخهٔ دوم موکول شده است.</p>
+
+<h3>۸) قابلیت‌های نسخهٔ اول</h3>
+<ul>
+<li>تولید مقالهٔ چندبخشی با عنوان، چکیده، سرصفحه‌ها و نتیجه‌گیری.</li>
+<li>ارزیابی کیفی داخلی با امتیاز ۰ تا ۱۰۰ و چرخهٔ اصلاح.</li>
+<li>تولید خودکار سئو: نامک، عنوان و توضیح متا، کلیدواژه‌ها، پرسش‌های متداول.</li>
+<li>تبدیل مقالهٔ منتشرشده به سند دانش، قطعه‌بندی و بردارسازی.</li>
+<li>چت مبتنی بر دانش با نمایش منابع و رفتار امتناع.</li>
+<li>پنل مدیریت دوزبانه با راست‌چین/چپ‌چین صحیح.</li>
+</ul>
+
+<h3>۹) معماری سیستم</h3>
+<div class="flow">
+<span>مرورگر کاربر</span><span class="arr">⇦⇨</span>
+<span>Next.js (وب + پنل مدیریت)</span><span class="arr">⇦⇨</span>
+<span>لایهٔ سرویس‌ها (عامل‌ها · RAG · احراز هویت)</span><span class="arr">⇦⇨</span>
+<span>PostgreSQL + pgvector روی Neon</span>
+</div>
+<p>درگاه هوش مصنوعی: <span class="tech">OpenRouter</span>. همهٔ کلیدها فقط سمت سرور نگهداری می‌شوند
+و هرگز به مرورگر ارسال نمی‌گردند.</p>
+
+<h3>۱۰) معماری عامل‌ها</h3>
+<p>هر عامل یک وظیفهٔ مشخص، یک قرارداد خروجیِ اعتبارسنجی‌شده و ثبت کامل وضعیت دارد. ترتیب اجرا در بخش ۱۱
+آمده است. خروجی هر مرحله پیش از عبور به مرحلهٔ بعد با قرارداد داده‌ای تطبیق داده می‌شود؛ در صورت نقض،
+درخواست اصلاح با ذکر خطا تکرار می‌شود و پس از اتمام تلاش‌ها، خطا به‌صورت شفاف ثبت می‌گردد.</p>
+
+<h3>۱۱) فرآیند تولید مقاله</h3>
+<div class="flow">
+<span>Idea</span><span class="arr">↓</span><span>Strategist</span><span class="arr">↓</span>
+<span>Researcher</span><span class="arr">↓</span><span>Writer</span><span class="arr">↓</span>
+<span>Critic</span><span class="arr">↓ (چرخهٔ اصلاح در صورت نیاز)</span>
+<span>SEO</span><span class="arr">↓</span><span>Publisher</span><span class="arr">↓</span>
+<span>Final Critic</span><span class="arr">↓</span><span>Lessons</span>
+</div>
+
+<h3>۱۲) Human Review</h3>
+<p>پس از پایان مراحل، وضعیت اجرا به «در انتظار بازبینی انسانی» تغییر می‌کند. مدیر متن، امتیاز نقد و
+پیشنهادها را می‌بیند و تصمیم انتشار/رد/بازتولید را می‌گیرد. انتشار خودکار بدون تأیید انسانی وجود ندارد.</p>
+
+<h3>۱۳) Knowledge Base</h3>
+<div class="flow">
+<span>مقالهٔ منتشرشده</span><span class="arr">↓</span><span>سند دانش (فعال)</span>
+<span class="arr">↓</span><span>قطعه‌بندی</span><span class="arr">↓</span>
+<span>Embedding</span><span class="arr">↓</span><span>ذخیره در pgvector</span>
+</div>
+<p>هر سند شناسهٔ مدل برداری، ابعاد (۲۰۴۸) و زمان نمایه‌سازی را ثبت می‌کند تا بردارهای ناهم‌خوان هرگز
+وارد جست‌وجو نشوند.</p>
+
+<h3>۱۴) RAG</h3>
+<p>پاسخ‌گویی مبتنی بر بازیابی: پرسش کاربر به بردار تبدیل می‌شود، میان بردارهای موجود جست‌وجوی شباهت
+انجام می‌گیرد، قطعه‌های مرتبط بالای آستانهٔ کیفیت انتخاب و به‌عنوان زمینه به مدل داده می‌شود؛ پاسخ نهایی
+همراه با عنوان منابع نمایش داده می‌شود.</p>
+<div class="callout">اصل طراحی: این چت‌بات عمداً یک چت‌بات عمومی نیست. اگر دانش مرتبط وجود نداشته باشد،
+سیستم پیام روشن «این موضوع در پایگاه دانش موجود نیست» را برمی‌گرداند و از پاسخ با اطلاعات عمومی
+خودداری می‌کند. پرسش‌های ادامه‌دار فقط در صورتی از زمینهٔ گفتگو استفاده می‌کنند که پاسخ قبلی مستند به
+منبع باشد.</div>
+
+<h3>۱۵) AI Providers / Models</h3>
+<table>
+<tr><th>نقش</th><th>درگاه</th><th>مدل</th></tr>
+<tr><td>تولید متن (تمام عامل‌ها)</td><td><span class="tech">OpenRouter</span></td><td><bdi>openai/gpt-4o-mini</bdi></td></tr>
+<tr><td>Embedding</td><td><span class="tech">OpenRouter</span></td><td><bdi>nvidia/nemotron-3-embed-1b:free</bdi></td></tr>
+<tr><td>ابعاد بردار</td><td colspan="2"><bdi>2048</bdi></td></tr>
+</table>
+<p>انتخاب مدل‌ها از طریق پنل مدیریت انجام می‌شود و منطق برنامه از نام مدل مستقل است؛ تغییر مدل نیازمند
+تغییر کد نیست.</p>
+
+<h3>۱۶) Admin Panel</h3>
+<ul>
+<li>داشبورد نمای کلی (مقالات، اجراها، وضعیت سیستم).</li>
+<li>مقالات: فهرست، ویرایش، گردش وضعیت.</li>
+<li>Agent Runs: خط زمان هر اجرا با جزئیات مرحله‌ها.</li>
+<li>Knowledge: اسناد، تعداد قطعه‌ها، نمایه‌سازی مجدد.</li>
+<li>Models: تنظیم نقش‌به‌نقش مدل‌ها + کاتالوگ زنده.</li>
+<li>Voice Agent: تنظیمات واقعی نسخهٔ ۱.</li>
+<li>AI Connections: مدیریت اتصال درگاه‌ها.</li>
+</ul>
+
+<h3>۱۷) Localization</h3>
+<p>رابط کاربری دوزبانه با ذخیرهٔ انتخاب کاربر در کوکی؛ جهت نمایش (راست‌چین برای فارسی، چپ‌چین برای
+انگلیسی) از روی زبان استخراج می‌شود. همهٔ متن‌های رابط از فایل‌های ترجمه خوانده می‌شوند و تست خودکار
+تساوی کلیدهای دو زبان وجود دارد.</p>
+
+<h3>۱۸) Voice Agent</h3>
+<p>نسخهٔ ۱ شامل پیاده‌سازی فعلیِ مبتنی بر مرورگر است: تشخیص و تبدیل گفتار با Web Speech API مرورگر،
+پاسخ‌گویی از پایگاه دانش با همان موتور RAG، و تنظیمات محدود و واقعی (فعال/غیرفعال بودن RAG، پرامپت
+سیستم، دمای پاسخ). قابلیت‌های صوتی پیشرفته در نسخهٔ دوم قرار دارند.</p>
+
+<h3>۱۹) Security</h3>
+<ul>
+<li>احراز هویت مبتنی بر نشست امن (httpOnly، SameSite) با انقضا.</li>
+<li>کلیدهای API فقط سمت سرور؛ هرگز به مرورگر ارسال نمی‌شوند.</li>
+<li>مسیرهای مدیریتی با میان‌افزار محافظت می‌شوند.</li>
+<li>غیرفعال‌سازی سخت‌گیرانهٔ ارائه‌دهندهٔ آزمایشی در محیط عملیاتی.</li>
+</ul>
+
+<h3>۲۰) Production Deployment</h3>
+<p>استقرار روی <span class="tech">Vercel</span> با پایگاه دادهٔ <span class="tech">Neon PostgreSQL</span>.
+استقرار فعلی همان مسیری است که در بستهٔ ارزیابی استفاده می‌شود و پیش از این با سناریوهای واقعی
+(تولید، انتشار، نمایه‌سازی، چت) آزموده شده است.</p>
+
+<h3>۲۱) Acceptance Criteria — معیارهای پذیرش V1</h3>
+<ol class="checklist">
+<li>ورود با حساب معتبر کار می‌کند.</li>
+<li>پنل مدیریت در دسترس است.</li>
+<li>اجرای خط تولید عامل‌ها ممکن است.</li>
+<li>مقاله تولید می‌شود.</li>
+<li>بازبینی انسانی در دسترس است.</li>
+<li>انتشار مقاله کار می‌کند.</li>
+<li>مقالهٔ منتشرشده به دانش تبدیل می‌شود.</li>
+<li>قطعه‌ها و بردارها ساخته می‌شوند.</li>
+<li>RAG دانش مرتبط را بازیابی می‌کند.</li>
+<li>پاسخ‌های مستند به منبع کار می‌کنند.</li>
+<li>پرسش بی‌ربط رد می‌شود.</li>
+<li>رابط فارسی/انگلیسی کار می‌کند.</li>
+<li>Voice Agent نسخهٔ ۱ قابل دسترسی است.</li>
+<li>تنظیمات مدل/درگاه کار می‌کند.</li>
+<li>استقرار عملیاتی برقرار است.</li>
+</ol>
+
+<h3>۲۲) V2 Roadmap</h3>
+<p>موارد زیر <span class="v2tag">برنامه‌ریزی شده برای نسخهٔ دوم</span> هستند و در V1 موجود نمی‌باشند:
+تصویرسازی و رسانه‌های غنی، دستیار صوتی پیشرفته با تنظیمات گسترده، اتوماسیون انتشار چندسکویی،
+گزارش‌های تحلیلی پیشرفته، ارکستراسیون پیشرفتهٔ عامل‌ها، بهینه‌سازی مقیاس و هزینه.</p>
+
+<h3>۲۳) Out of Scope</h3>
+<p>هر قابلیتی خارج از بخش‌های ۷ و ۸ این سند — از جمله موارد بخش ۲۲ و هرگونه انتشار بدون بازبینی
+انسانی.</p>
+
+<h3>۲۴) Future Development</h3>
+<p>اولویت‌گذاری نسخه‌های بعدی بر اساس بازخورد ارزیاب و استفادهٔ واقعی انجام خواهد شد؛ ساختار فعلی طوری
+طراحی شده که افزودن عامل‌ها یا منابع دانش جدید تغییر معماری لازم نداشته باشد.</p>
+
+<h3>۲۵) Delivery</h3>
+<table>
+<tr><th>مؤلفه</th><th>وضعیت</th></tr>
+<tr><td>کد منبع (GitHub)</td><td>آمادهٔ مشاهده</td></tr>
+<tr><td>استقرار عملیاتی</td><td>فعال</td></tr>
+<tr><td>راهنمای ارزیابی عملی</td><td>پیوست همین بسته</td></tr>
+<tr><td>حساب ارزیاب</td><td>طبق بخش دسترسی ارزیاب</td></tr>
+</table>
+
+<h3>۲۶) جمع‌بندی نهایی</h3>
+<p>نسخهٔ اول دقیقاً همان چیزی است که توافق شد: یک خط تولید محتوای مبتنی بر عامل‌های هوشمند با نظارت
+انسانی، پایگاه دانش زنده و چت مبتنی بر دانش — مستقر در محیط عملیاتی و آمادهٔ ارزیابی عملی. موارد آینده
+شفاف به V2 منتقل شده‌اند تا ارزیابی بر اساس آنچه «هست» انجام شود، نه آنچه «خواهد شد».</p>
+
+<div class="divider"></div>
+<h2>بخش ۴ — راهنمای ارزیابی عملی پروژه — ۱۰ دقیقه</h2>
+<p>این مسیر بدون دانش فنی قابل اجراست. نشانی سامانه:
+<span class="tech">https://auto-ai-for-nature.vercel.app/</span></p>
+<div class="steps">
+<li><b>ورود به سامانه.</b> از بخش «دسترسی ارزیاب» انتهای سند، ایمیل و گذرواژه را بردارید و وارد شوید.
+<i>انتظار: بارگذاری داشبورد مدیریت.</i></li>
+<li><b>داشبورد.</b> نمای کلی سیستم: تعداد مقالات، اجراهای عامل‌ها و وضعیت عمومی را ببینید.</li>
+<li><b>Agent Runs.</b> فهرست اجراها؛ وارد یکی شوید تا خط زمان ۹ مرحله‌ای (ایده تا درس‌ها) را ببینید.</li>
+<li><b>تولید مقاله (اختیاری).</b> موضوعی مانند «نقش تالاب‌ها در حفظ تنوع زیستی» را وارد و تولید را
+شروع کنید. هر مرحله جداگانه اجرا و ثبت می‌شود؛ این یک فراخوانی واحد نیست.</li>
+<li><b>بازبینی انسانی.</b> پس از پایان، وضعیت «در انتظار بازبینی» می‌شود: متن، امتیاز نقد و کنترل انتشار
+نمایش داده می‌شود. تصمیم نهایی با شماست.</li>
+<li><b>انتشار.</b> با تأیید، مقاله منتشر می‌شود — یک گذار وضعیت کسب‌وکاری که آن را مشمول ورود به
+پایگاه دانش می‌کند.</li>
+<li><b>Knowledge Base.</b> در بخش دانش، سند متناظر با مقاله، تعداد قطعه‌ها و اطلاعات بردارسازی
+را ببینید.</li>
+<li><b>RAG CHAT.</b> در چت بپرسید: «این مقاله چه نقشی برای تالاب‌ها در حفظ تنوع زیستی بیان می‌کند؟»
+<i>انتظار: پاسخ مستند به همان مقاله همراه با نمایش منبع.</i></li>
+<li><b>آزمون تمرکز.</b> بپرسید: «رئیس جمهور فعلی آمریکا کیست؟» <i>انتظار: پیام روشن عدم وجود دانش
+مرتبط؛ بدون استفاده از اطلاعات عمومی مدل. این رفتار عمدی است: چت‌بات فقط از پایگاه دانش پروژه
+پاسخ می‌دهد.</i></li>
+<li><b>Models / AI Connections.</b> تنظیمات نقش‌ها را ببینید: درگاه OpenRouter، مدل گفتگو
+<bdi>openai/gpt-4o-mini</bdi> و مدل برداری <bdi>nvidia/nemotron-3-embed-1b:free</bdi>. انتخاب مدل‌ها
+از منطق برنامه جداست.</li>
+<li><b>Voice Agent.</b> بخش صوت شامل پیاده‌سازی فعلیِ مبتنی بر مرورگر (Web Speech API) و تنظیمات
+واقعی نسخهٔ ۱ است؛ قابلیت‌های صوتی پیشرفته مربوط به نسخهٔ دوم هستند.</li>
+<li><b>GitHub / Engineering Guide.</b> مخزن کد و «راهنمای میدانی مهندسی هوش مصنوعی» شامل
+درس‌های واقعی توسعه و اشکال‌زدایی همین پروژه در دسترس است.</li>
+</div>
+
+<div class="divider"></div>
+<h2>بخش ۵ — دسترسی ارزیاب به محیط عملیاتی</h2>
+<div class="card"><p style="margin:0">اطلاعات ورود ارزیاب در نسخهٔ خصوصی سند تحویل داده شده است.</p></div>
+<div class="divider"></div>
+<h2>بخش ۶ — مخزن کد و راهنمای مهندسی</h2>
+<p>مخزن GitHub:
+<span class="tech">https://github.com/alirezafc/AutoAI-for-Nature</span></p>
+<p>راهنمای میدانی مهندسی هوش مصنوعی (۲۰ درس + ۷ مطالعهٔ موردی واقعی از همین پروژه):</p>
+<ul>
+<li>نسخهٔ Markdown:
+<span class="tech">docs/AI-SOFTWARE-ENGINEERING-FIELD-GUIDE.md</span></li>
+<li>نسخهٔ تعاملی HTML:
+<span class="tech">docs/ai-software-engineering-field-guide.html</span></li>
+</ul>
+
+<div class="divider"></div>
+<h2>بخش ۷ — چک‌لیست نهایی ارزیابی</h2>
+<ul class="checklist">
+<li>باز شدن وبسایت</li>
+<li>ورود موفق ارزیاب</li>
+<li>کارکرد داشبورد</li>
+<li>مشاهدهٔ Agent Runs</li>
+<li>تولید مقاله</li>
+<li>بازبینی انسانی</li>
+<li>انتشار مقاله</li>
+<li>نمایه‌سازی دانش</li>
+<li>پرسش RAG موفق</li>
+<li>رد پرسش بی‌ربط</li>
+<li>مشاهدهٔ تنظیمات مدل‌ها</li>
+<li>دسترسی Voice Agent</li>
+<li>رابط فارسی</li>
+<li>رابط انگلیسی</li>
+<li>دسترسی مخزن GitHub</li>
+<li>دسترسی راهنمای مهندسی</li>
+</ul>
+
+<div class="card" style="margin-top:30px">
+<p style="text-align:center;margin:0">پایان بستهٔ تحویل — AutoAI for Nature V1<br>
+<span style="font-size:11px;color:var(--ink2)">این سند برای ارزیاب تهیه شده و حاوی اطلاعات دسترسی است؛ لطفاً منتشر نکنید.</span></p>
+</div>
+
+</div>
+<footer class="doc noprint">AutoAI for Nature — بستهٔ تحویل و ارزیابی · نسخهٔ ۱٫۰ · نسخهٔ عمومی — بدون اطلاعات محرمانه</footer>
+</body>
+</html>
+
