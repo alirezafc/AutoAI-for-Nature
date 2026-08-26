@@ -1,0 +1,1210 @@
+﻿<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Software Engineering Field Guide — Lessons from building AutoAI for Nature</title>
+<style>
+  :root{
+    --bg:#fbfbfa; --bg2:#f2f3f0; --panel:#ffffff; --ink:#1c232b; --ink2:#5a6673;
+    --line:#e3e4e0; --accent:#0f6b4f; --warn-bg:#fdf6e3; --warn-line:#e5d290;
+    --bad-bg:#fdf0ef; --bad-line:#eec7c2; --good-bg:#eef7f2; --good-line:#bcd9c9;
+    --code-bg:#f0f1ee; --code-ink:#23303a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,"Helvetica Neue",Arial,sans-serif;
+  }
+  html.dark{
+    --bg:#12161a; --bg2:#181d22; --panel:#1a2026; --ink:#dbe3ea; --ink2:#93a1ad;
+    --line:#28313a; --accent:#4cc38a; --warn-bg:#2b2413; --warn-line:#6b5a22;
+    --bad-bg:#2c1917; --bad-line:#7a4038; --good-bg:#14261d; --good-line:#2b5943;
+    --code-bg:#20272e; --code-ink:#c9d6e0;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth; scroll-padding-top:80px}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15.5px; line-height:1.65}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);width:0;z-index:60}
+  header.top{position:sticky;top:0;z-index:50;background:var(--panel); border-bottom:1px solid var(--line)}
+  .top-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 20px;flex-wrap:wrap}
+  .top-inner strong{font-size:14px}
+  .spacer{flex:1}
+  .toolbtn{background:transparent;border:1px solid var(--line);color:var(--ink2);border-radius:6px;padding:5px 10px;font-size:12.5px;cursor:pointer;font-family:var(--sans)}
+  .toolbtn:hover{border-color:var(--accent);color:var(--accent)}
+  #searchbox{flex:0 1 320px;background:var(--bg2);border:1px solid var(--line);border-radius:6px;color:var(--ink);padding:6px 10px;font-size:13px;font-family:var(--sans)}
+  #searchbox:focus{outline:1px solid var(--accent)}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:272px minmax(0,1fr);gap:36px}
+  nav#toc{position:sticky;top:57px;align-self:start;max-height:calc(100vh - 70px);overflow:auto;padding:24px 0 60px;font-size:13.2px}
+  nav#toc h4{margin:0 0 8px;color:var(--ink2);text-transform:uppercase;letter-spacing:.08em;font-size:11px}
+  nav#toc ol{list-style:none;margin:0;padding:0;counter-reset:toc}
+  nav#toc li{counter-increment:toc;margin:1px 0}
+  nav#toc a{display:block;color:var(--ink2);padding:4px 9px;border-left:2px solid transparent;border-radius:0 6px 6px 0;line-height:1.35}
+  nav#toc a::before{content:counter(toc) ". ";opacity:.55;font-variant-numeric:tabular-nums}
+  nav#toc a:hover{color:var(--ink);background:var(--bg2);text-decoration:none}
+  nav#toc a.active{color:var(--accent);border-left-color:var(--accent);font-weight:600;background:var(--bg2)}
+  main{min-width:0;padding-bottom:120px}
+  .hero{padding:44px 0 28px;border-bottom:1px solid var(--line);margin-bottom:32px}
+  h1{font-size:clamp(28px,4vw,40px);line-height:1.12;margin:0 0 10px;letter-spacing:-.01em}
+  .sub{font-size:17px;color:var(--ink2);max-width:58ch;margin:0 0 14px}
+  .meta{font-size:12.5px;color:var(--ink2);font-family:var(--mono)}
+  section{margin:52px 0}
+  h2{font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .num{color:var(--accent);font-family:var(--mono);font-size:15px;margin-right:10px;font-weight:700}
+  .lede{color:var(--ink2);max-width:72ch;margin:0 0 16px}
+  h3{font-size:16.5px;margin:28px 0 8px}
+  p,ul,ol{max-width:78ch}
+  li{margin:4px 0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--code-bg);color:var(--code-ink);padding:1.5px 5px;border-radius:4px;word-break:break-word}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:13px 15px;overflow:auto;font-size:13px;line-height:1.55;position:relative}
+  pre code{background:none;padding:0}
+  .copybtn{position:absolute;top:8px;right:8px;font-size:11px;padding:3px 8px;opacity:0;transition:opacity .15s}
+  pre:hover .copybtn{opacity:1}
+  .callout{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--panel);border-radius:0 8px 8px 0;padding:12px 16px;margin:16px 0}
+  .callout.warn{border-left-color:#c98a1b;background:var(--warn-bg);border-color:var(--warn-line)}
+  .callout.bad{border-left-color:#c0392b;background:var(--bad-bg);border-color:var(--bad-line)}
+  .callout.good{border-left-color:var(--accent);background:var(--good-bg);border-color:var(--good-line)}
+  .tag{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink2);margin-bottom:4px;font-weight:700}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin:14px 0}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--bg2);font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)}
+  details.case{border:1px solid var(--line);border-radius:8px;background:var(--panel);margin:12px 0}
+  details.case summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none;display:flex;gap:10px}
+  details.case summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+  details.case[open] summary::before{transform:rotate(90deg)}
+  details.case .body{padding:0 18px 14px;border-top:1px dashed var(--line)}
+  details.case h4{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink2);margin:13px 0 3px}
+  ol.check,list.check{list-style:none;padding-left:0;counter-reset:c}
+  ol.check>li{counter-increment:c;position:relative;padding-left:30px;margin:6px 0;cursor:pointer;-webkit-user-select:none;user-select:none}
+  ol.check>li::before{content:"☐";counter-increment:c;position:absolute;left:2px;color:var(--accent);font-size:15px}
+  ol.check>li.done{text-decoration:line-through;color:var(--ink2)}
+  ul.check>li{position:relative;padding-left:26px;margin:6px 0;cursor:pointer;list-style:none}
+  ul.check>li::before{content:"☐";position:absolute;left:2px;color:var(--accent);font-size:15px}
+  ul.check>li.done{text-decoration:line-through;color:var(--ink2)}
+  .funnel{font-family:var(--mono);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:16px 0;max-width:62ch;line-height:1.9}
+  .funnel div::after{content:"↓";display:block;text-align:center;color:var(--ink2);opacity:.55}
+  .funnel div:last-child::after{content:""}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin:14px 0}
+  .rule{border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;background:var(--panel);padding:14px 16px}
+  .rule b{display:block;font-size:14.5px;margin-bottom:4px}
+  .rule span{color:var(--ink2);font-size:13.5px}
+  footer{border-top:1px solid var(--line);margin-top:80px;padding:24px 20px;color:var(--ink2);font-size:12.5px}
+  mark.hit{background:#ffd54d;color:#111;border-radius:3px;padding:0 2px}
+  html.dark mark.hit{background:#8a6d00;color:#fff}
+  @media(max-width:960px){.wrap{grid-template-columns:1fr;gap:0}nav#toc{position:relative;top:0;max-height:none;border-bottom:1px solid var(--line);padding:14px 0}}
+  @media print{
+    header.top,.progress,#searchbox,.copybtn,.toolbtn{display:none!important}
+    .wrap{display:block;max-width:none}nav#toc{display:none}
+    body{font-size:11pt;background:#fff;color:#000}
+    details.case:not([open]) .body{display:block}
+    details.case summary::before{content:""}
+    pre{white-space:pre-wrap}section{break-inside:auto}
+  }
+  /* ===== QUICK START layer ===== */
+  .qs-hero{padding:44px 0 26px;border-bottom:1px solid var(--line);margin-bottom:0}
+  .qs-kicker{display:inline-flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11.5px;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);
+    border-radius:999px;padding:3px 12px;margin-bottom:18px}
+  .qs-hero h1{font-size:clamp(30px,4.4vw,44px);line-height:1.08;margin:0 0 14px}
+  .qs-hero p.sub{font-size:17.5px}
+  .pathstrip{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 6px}
+  .pathchip{font-family:var(--mono);font-size:12px;border:1px dashed var(--line);color:var(--ink2);
+    border-radius:999px;padding:5px 13px;display:inline-flex;gap:8px;align-items:center}
+  .pathchip b{color:var(--accent)}
+  section.qs{margin:46px 0;padding-top:6px}
+  section.qs>h2{font-size:clamp(21px,3vw,27px)}
+  section.qs .lede{font-size:16px}
+  .story{max-width:80ch}
+  .story p{margin:12px 0}
+  .story .punch{font-size:19px;line-height:1.45;margin:20px 0;color:var(--ink)}
+  .breakdown{list-style:none;padding-left:0;margin:16px 0}
+  .breakdown li{padding:5px 0 5px 26px;position:relative;border-bottom:1px dashed var(--line)}
+  .breakdown li::before{content:"✕";position:absolute;left:2px;color:#c0392b;font-weight:700}
+  html.dark .breakdown li::before{color:#e07b6d}
+  .keylesson{border:1px solid var(--accent);background:var(--good-bg);border-radius:10px;
+    padding:16px 20px;margin:22px 0;max-width:none}
+  .keylesson b{font-size:17px}
+  .principle{counter-increment:pr;border:1px solid var(--line);border-radius:10px;background:var(--panel);
+    padding:16px 18px 14px;margin:0}
+  .principle::before{content:"0" counter(pr);font-family:var(--mono);color:var(--accent);
+    font-size:12px;letter-spacing:.1em;display:block;margin-bottom:6px;font-weight:700}
+  .principle h3{margin:0 0 8px;font-size:16.5px}
+  .principle .strong{font-weight:600;margin:0 0 10px}
+  .principle .ex{color:var(--ink2);font-size:13.8px;margin:0 0 10px}
+  .principle .think{font-style:italic;font-size:13.5px;color:var(--accent2);margin:0 0 10px}
+  .principle .more{font-size:12.5px}
+  .plist{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:18px 0;counter-reset:pr}
+  .stageflow{font-family:var(--mono);text-align:center;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:20px 16px;margin:20px auto;max-width:520px;font-size:13.5px;line-height:1.5}
+  .stageflow .st{padding:9px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg2)}
+  .stageflow .st.bad{border-color:#c0392b;color:#c0392b;font-weight:700}
+  .stageflow .arr{color:var(--ink2);opacity:.6;padding:4px 0;font-size:12px}
+  .stageflow .verdict{margin-top:14px;font-family:var(--sans);font-size:14px;text-align:left;
+    border-top:1px dashed var(--line);padding-top:12px}
+  .minibadge{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    border:1px solid var(--line);border-radius:4px;padding:1px 7px;color:var(--ink2)}
+  .qscards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:18px 0}
+  .qscard{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+    background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+  .qscard h3{margin:0;font-size:15px}
+  .qscard p{margin:0;color:var(--ink2);font-size:13.5px;flex:1}
+  .qscard .meta{display:flex;gap:6px;flex-wrap:wrap}
+  .qscard a.more{font-size:12.5px;font-weight:600}
+  .deepline{border-top:3px double var(--line);margin:60px 0 34px;padding-top:26px}
+  .deepline h2{font-size:clamp(22px,3vw,28px)}
+  .clcheck{list-style:none;padding:0;counter-reset:ck;margin:14px 0}
+  .clcheck li{counter-increment:ck;position:relative;padding:8px 10px 8px 40px;border:1px solid var(--line);
+    border-radius:8px;margin:6px 0;cursor:pointer;-webkit-user-select:none;user-select:none;font-size:14.5px}
+  .clcheck li::before{content:"☐";position:absolute;left:12px;color:var(--accent);font-size:16px;top:6px}
+  .clcheck li.done{color:var(--ink2)}
+  .clcheck li.done::before{content:"☑"}
+  .clcheck li.done .q{text-decoration:line-through}
+  .resetbtn{margin-top:4px}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="top"><div class="top-inner">
+  <strong>AI Engineering Field Guide</strong>
+  <input id="searchbox" type="search" placeholder="Search this guide…" aria-label="Search guide">
+  <span class="spacer"></span>
+  <button class="toolbtn" id="expandAll">Expand cases</button>
+  <button class="toolbtn" id="themeBtn">◐ Theme</button>
+  <button class="toolbtn" onclick="window.print()">Print</button>
+</div></header>
+
+<div class="wrap">
+<nav id="toc" aria-label="Table of contents"><h4>Contents</h4><ol id="tocList"></ol></nav>
+<main>
+
+<!-- ================= QUICK START ================= -->
+<div class="qs-hero" id="qs-start">
+  <span class="qs-kicker">Start here · 10 minutes</span>
+  <h1>10 Minutes That Can Change How You Build AI Systems</h1>
+  <p class="sub">These are not theoretical rules. They came from things that actually broke.</p>
+  <div class="pathstrip">
+    <span class="pathchip"><b>10 min</b> core principles ↓</span>
+    <span class="pathchip"><b>30 min</b> practical path ↓</span>
+    <span class="pathchip"><b>deep dive</b> full guide below</span>
+  </div>
+</div>
+
+<section class="qs" id="qs-why">
+  <p class="story">
+    <p>AutoAI started as “an AI application.” Wire up a model, generate some articles, add a chatbot.
+    How hard could it be?</p>
+    <p>Then the seemingly simple features started opening trapdoors.</p>
+  </p>
+  <ul class="breakdown">
+    <li>The LLM returned perfectly valid JSON — with the wrong shape inside.</li>
+    <li>Vectors existed in PostgreSQL, the embedding API returned 200 OK, and the chatbot still knew nothing.</li>
+    <li>Articles were published while their agent runs sat frozen in “waiting for human”.</li>
+    <li>Login worked — but only after refreshing the page.</li>
+    <li>Switching language flipped text direction without changing the actual language.</li>
+    <li>A “View Article” button appeared before any article content existed.</li>
+    <li>Voice settings rendered a full panel of options the backend never read.</li>
+    <li>Everything passed locally and broke in production anyway.</li>
+  </ul>
+  <div class="keylesson">
+    <b>The difficult part of AI software is rarely “calling the model.”
+    It is engineering everything around the model:</b>
+    configuration resolution, state machines, retrieval pipelines, grounding policy,
+    render boundaries, data lifecycles — and knowing when to stop building.
+  </div>
+  <p class="story">What follows is the compressed version: twelve principles, each earned through a real
+  failure. If one of them makes you think <em>“wait — does MY system do that?”</em>, follow its link into
+  the deep dive.</p>
+</section>
+
+<section class="qs" id="qs-core">
+<h2><span class="num">§</span>The 10-Minute Core</h2>
+<p class="lede">Twelve principles. Each one is short on purpose — each links to the full investigation.</p>
+<div class="plist">
+
+<article class="principle" id="qs-p1">
+<h3>JSON Is Not a Contract</h3>
+<p class="strong">An LLM can return perfectly valid JSON that is completely wrong for your application.</p>
+<p class="ex">AutoAI’s model kept returning an object where the contract demanded a string inside
+<code>outline[]</code> — three retries, same wrong shape, because the nested schema never reached the model.</p>
+<p class="think">“If my model returns valid JSON, what exactly have I proved?”</p>
+<a class="more" href="#c1">Read the full case study →</a>
+</article>
+
+<article class="principle" id="qs-p2">
+<h3>A Vector Is Not RAG</h3>
+<p class="strong">Having vectors in PostgreSQL proves vectors exist. It does not prove retrieval works.</p>
+<p class="ex">The production database had real 2048-d embeddings while the chatbot answered
+“No relevant knowledge found” to everything.</p>
+<p class="think">“Can I prove every stage between the user’s question and the retrieved chunk?”</p>
+<a class="more" href="#s5">Explore the RAG chapter →</a>
+</article>
+
+<article class="principle" id="qs-p3">
+<h3>IDs Are Not State</h3>
+<p class="strong">A post can have an ID and no usable content. A run can exist and be stale. A document can exist and be invisible.</p>
+<p class="ex">“View Article” appeared during generation because a placeholder post was reserved up-front —
+with empty content.</p>
+<p class="think">“Which of my UI actions are gated by IDs instead of business state?”</p>
+<a class="more" href="#s16">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p4">
+<h3>Configuration Is Architecture</h3>
+<p class="strong">Correct code can still behave incorrectly because configuration resolution is wrong.</p>
+<p class="ex">All nine AI roles pointed at a demo mock in production because env fallbacks fired where
+variables were missing — while the real key sat unconnected in another settings surface.</p>
+<p class="think">“For every external dependency: what is my source → precedence → validation → fallback?”</p>
+<a class="more" href="#s3">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p5">
+<h3>Models Have Capability Contracts</h3>
+<p class="strong">Never assume a model supports a feature — structured outputs, context length, pricing — verify against its live catalog.</p>
+<p class="ex">Request tiers (<code>json_schema → json_object → none</code>) exist because capability flags
+differ per model and drift over time.</p>
+<p class="think">“If my provider changes this model tomorrow, what breaks silently?”</p>
+<a class="more" href="#s4">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p6">
+<h3>Pipelines Are State Machines</h3>
+<p class="strong">An agent workflow is a persisted state machine with human gates — not a sequence of AI calls.</p>
+<p class="ex">Published articles kept a run stuck in <code>waiting_for_human</code>: finalization updated one
+pointer while regeneration had created multiple runs per post.</p>
+<p class="think">“When this workflow terminates, which related executions must sweep to terminal state?”</p>
+<a class="more" href="#s7">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p7">
+<h3>Grounding Must Be Deterministic</h3>
+<p class="strong">A knowledge-grounded assistant answers ONLY when retrieval proves relevance — otherwise it refuses without calling the model at all.</p>
+<p class="ex">Asked about a president, AutoAI once answered from world knowledge next to a
+“no relevant knowledge found” banner. Both statements were true; zero grounding present.</p>
+<p class="think">“What stops my chatbot from being helpful outside its knowledge base?”</p>
+<a class="more" href="#s6">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p8">
+<h3>Find the First Divergence</h3>
+<p class="strong">When output is wrong, decompose the path into measurable stages and find the earliest point where reality differs from expectation.</p>
+<p class="ex">One diagnostic funnel turned three separate “RAG is broken” incidents into three precise root causes.</p>
+<p class="think">“Am I fixing the stage that lied — or the stage that looks suspicious?”</p>
+<a class="more" href="#s12">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p9">
+<h3>Local ≠ Production</h3>
+<p class="strong">Local ≠ Vercel ≠ Neon ≠ OpenRouter. Each boundary adds failure modes your laptop never exercised.</p>
+<p class="ex">Env-default fallbacks fire only where variables are missing — which happens first in production.
+File-based local databases are single-writer; smoke scripts see a different world than the app.</p>
+<p class="think">“Which of my assumptions survive the deploy boundary?”</p>
+<a class="more" href="#s11">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p10">
+<h3>Production Proof Closes the Loop</h3>
+<p class="strong">A feature is finished when the actual deployed path passes — observed, not assumed.</p>
+<p class="ex">Health endpoints, authenticated diagnostics, and network-level evidence turned “should work”
+into measured facts (12/12 calls to the right provider, exact similarities, zero non-200s).</p>
+<p class="think">“What would I need to SHOW someone that this works in production right now?”</p>
+<a class="more" href="#s13">Read more →</a>
+</article>
+
+<article class="principle" id="qs-p11">
+<h3>UI Mirrors Business State — or Lies</h3>
+<p class="strong">Every control must derive from meaningful backend state, never from identifier existence or timers.</p>
+<p class="ex">A voice-settings panel offered provider/model fields the reply pipeline never read, while omitting
+what it did consume. Settings UIs must expose the intersection of changeable and consumed.</p>
+<p class="think">“Does every option in my UI actually do something?”</p>
+<a class="more" href="#c7">Read the case study →</a>
+</article>
+
+<article class="principle" id="qs-p12">
+<h3>V1 Needs a Stopping Rule</h3>
+<p class="strong">Done = acceptance criteria passing in production. Not out-of-ideas. Not tired.</p>
+<p class="ex">AutoAI’s freeze memo listed forbidden files by name while the last two fixes shipped —
+that memo is why the release happened.</p>
+<p class="think">“Is this defect blocking the core workflow — or just bothering me?”</p>
+<a class="more" href="#s17">Read more →</a>
+</article>
+
+</div>
+</section>
+
+<section class="qs" id="qs-divergence">
+<h2><span class="num">§</span>When Something Breaks, Don’t Guess.<br>Find the First Divergence.</h2>
+<p class="lede">This is the debugging method behind almost every fix in this guide — drawn here as the
+path every request takes through a RAG system:</p>
+<div class="stageflow">
+  <div class="st">EXPECTED behavior</div>
+  <div class="arr">↓ defined as acceptance criteria</div>
+  <div class="st">INPUT — user question arrives</div>
+  <div class="arr">↓</div>
+  <div class="st">PROCESS — embed · filter · rank</div>
+  <div class="arr">↓</div>
+  <div class="st">DATABASE — candidates from pgvector</div>
+  <div class="arr">↓ identity + status + source-type filters</div>
+  <div class="st">RETRIEVAL — top-K chunks above threshold</div>
+  <div class="arr">↓</div>
+  <div class="st bad">MODEL — answer generation</div>
+  <div class="arr">↓</div>
+  <div class="st">OUTPUT — grounded answer + sources</div>
+  <div class="verdict"><strong>When the OUTPUT is wrong, the bug is often not at the output.</strong>
+  In AutoAI the model was innocent every time — the divergence lived earlier: an inactive document,
+  a null embedding identity, a language-coupled filter, a swallowed indexing error. Measure each stage,
+  find the FIRST stage where reality differs from expectation, and fix exactly that. Then write the
+  regression test so it can never lie again.</div>
+</div>
+<p class="story">The same method found the login bug (auth ✓ → cookie ✓ → navigation ✗) and the stuck
+agent runs (publish ✓ → finalize ✗). It works because it converts “something is broken” into
+“<em>this</em> stage returns something different from <em>that</em> expectation.”</p>
+</section>
+
+<section class="qs" id="qs-30min">
+<h2><span class="num">§</span>Got 30 Minutes?</h2>
+<p class="lede">The practical path — seven chapters, roughly four minutes each, in the order that builds
+the mental model fastest.</p>
+<div class="qscards">
+  <div class="qscard"><span class="minibadge">1 · architecture</span>
+    <h3>Understand the architecture</h3>
+    <p>Sources of truth, failure boundaries, and why “where does truth live” decides everything downstream.</p>
+    <a class="more" href="#s2">Architecture Before Implementation →</a></div>
+  <div class="qscard"><span class="minibadge">2 · ai contracts</span>
+    <h3>Understand AI failure modes</h3>
+    <p>Model capabilities, structured outputs, validation layers and fallback tiers.</p>
+    <a class="more" href="#s4">AI Providers &amp; Model Abstraction →</a></div>
+  <div class="qscard"><span class="minibadge">3 · rag</span>
+    <h3>Understand RAG</h3>
+    <p>The eleven-stage funnel, seven real ways it broke, and the checklist that finds the lying stage.</p>
+    <a class="more" href="#s5">RAG: Never Trust the Surface →</a></div>
+  <div class="qscard"><span class="minibadge">4 · agents</span>
+    <h3>Understand agent systems</h3>
+    <p>Persisted state machines, human gates, multi-execution entities and terminal sweeps.</p>
+    <a class="more" href="#s7">Agent Pipelines Are State Machines →</a></div>
+  <div class="qscard"><span class="minibadge">5 · production</span>
+    <h3>Understand production</h3>
+    <p>Every boundary between local and live — and the proof standard that closes them.</p>
+    <a class="more" href="#s11">Local ≠ Production →</a></div>
+  <div class="qscard"><span class="minibadge">6 · debugging</span>
+    <h3>Learn the debugging discipline</h3>
+    <p>Expected vs observed, stage decomposition, first divergence, regression lock.</p>
+    <a class="more" href="#s12">First-Divergence Debugging →</a></div>
+  <div class="qscard"><span class="minibadge">7 · evidence</span>
+    <h3>See real failures</h3>
+    <p>Seven production incidents with symptom, wrong assumption, root cause and transferable lesson.</p>
+    <a class="more" href="#s20">Case Studies →</a></div>
+</div>
+</section>
+
+<section class="qs" id="qs-checklist">
+<h2><span class="num">§</span>Starting a New AI Project Tomorrow?</h2>
+<p class="lede">Answer these twelve questions BEFORE writing code. Your future self debugs faster when
+these have answers. Click items as you settle them — progress is saved in this browser.</p>
+<ol class="clcheck" id="qsChecklist">
+<li data-k="done"><span class="q">What does “done” mean — observably?</span></li>
+<li data-k="v1"><span class="q">What is explicitly V1?</span></li>
+<li data-k="v2"><span class="q">What is explicitly V2?</span></li>
+<li data-k="truth"><span class="q">What is the source of truth for each piece of state?</span></li>
+<li data-k="sm"><span class="q">Where is the state machine — including human gates?</span></li>
+<li data-k="malformed"><span class="q">What happens when the AI returns malformed data?</span></li>
+<li data-k="down"><span class="q">What happens when the provider is unavailable?</span></li>
+<li data-k="embid"><span class="q">How are embeddings identified (provider/model/dimensions)?</span></li>
+<li data-k="ragproof"><span class="q">How will I PROVE RAG works — stage by stage?</span></li>
+<li data-k="prodproof"><span class="q">How do I prove production works, not just local?</span></li>
+<li data-k="rollback"><span class="q">What is my rollback strategy?</li>
+<li data-k="stop"><span class="q">What will make me stop working on this?</li>
+</ol>
+<button class="toolbtn resetbtn" id="resetChecklist">Reset checklist</button>
+</section>
+
+<div class="deepline" id="qs-deepdive">
+<span class="qs-kicker">Deep dive</span>
+<h2>You now know the rules. Here’s where they came from.</h2>
+<p class="sub" style="max-width:70ch">None of the principles above were invented beforehand. They were
+extracted — sometimes painfully — from real failures, debugging sessions and production verification runs.
+Below sits the complete library: twenty chapters, the full checklist, and seven case studies with the
+actual investigations.</p>
+<div class="qscards">
+  <div class="qscard"><span class="minibadge">AI contract · intermediate</span>
+    <h3>The LLM Returned Valid JSON — And Still Broke the Application</h3>
+    <p>Three retries, same wrong shape: an object where a string belonged, inside a perfectly parseable response.</p>
+    <a class="more" href="#c1">Read the investigation →</a></div>
+  <div class="qscard"><span class="minibadge">rag · advanced</span>
+    <h3>The Database Had Vectors — But RAG Was Blind</h3>
+    <p>Published docs, real 2048-d embeddings, and “no relevant knowledge found” for every question.</p>
+    <a class="more" href="#c2">Read the investigation →</a></div>
+  <div class="qscard"><span class="minibadge">state machines · core</span>
+    <h3>The Article Was Published — But the Agent Was Still Waiting</h3>
+    <p>Regeneration creates multiple runs per post; finalization updated only one cached pointer.</p>
+    <a class="more" href="#c3">Read the investigation →</a></div>
+  <div class="qscard"><span class="minibadge">ux · navigation</span>
+    <h3>Login Worked — But Only After Refresh</h3>
+    <p>Auth returned 200 with a fresh cookie; the client router just refused to believe it.</p>
+    <a class="more" href="#c4">Read the investigation →</a></div>
+  <div class="qscard"><span class="minibadge">i18n · tricky</span>
+    <h3>The Language Changed — Except the Language</h3>
+    <p>Direction flipped instantly; server-rendered strings waited for a full request nobody made.</p>
+    <a class="more" href="#c5">Read the investigation →</a></div>
+  <div class="qscard"><span class="minibadge">ui state · foundational</span>
+    <h3>The Button Existed — But the Article Didn’t</h3>
+    <p>A reserved placeholder post made “View Article” true from millisecond one of generation.</p>
+    <a class="more" href="#c6">Read the investigation →</a></div>
+  <div class="qscard"><span class="minibadge">contracts · insidious</span>
+    <h3>The Voice Settings Existed — But the System Didn’t Use Them</h3>
+    <p>A full panel of provider/model fields the reply pipeline never read — while the real controls hid in plain sight.</p>
+    <a class="more" href="#c7">Read the investigation →</a></div>
+</div>
+</div>
+
+<div class="hero">
+  <h1>AI Software Engineering Field Guide</h1>
+  <p class="sub">Lessons from building, debugging and shipping <strong>AutoAI for Nature</strong> — an AI-native
+  content platform with a nine-agent editorial pipeline, grounded RAG chatbot and voice assistant —
+  from first commit to a frozen V1 in production.</p>
+  <p class="meta">Case-study driven · Every lesson traces to a real failure or fix ·
+  Context: Next.js · PostgreSQL/pgvector · OpenRouter (GPT-4o-mini + Nemotron embeddings) · Vercel</p>
+</div>
+
+<section id="s1">
+<h2><span class="num">01</span>The Engineering Mindset</h2>
+<p class="lede">Most failed AI projects are not killed by models. They are killed by undefined scope, undefined "done", and endless polishing that replaces shipping.</p>
+<h3>Don't start by coding</h3>
+<p>AutoAI began with questions, not code: what happens when the pipeline finishes? Who decides an article is publishable? What if the model returns garbage? Answering those produced the review gate (<code>waiting_for_human</code>) and the mock-provider veto long before they were needed — which is why they held up under pressure.</p>
+<h3>Define what "done" means first</h3>
+<p>"Done" must be observable behavior. For AutoAI V1 it was written down explicitly:</p>
+<ul>
+<li>A Persian or English topic produces a full article through nine agents and reaches <code>waiting_for_human</code>.</li>
+<li>Human approval publishes → the article is indexed → immediately answerable by chat.</li>
+<li>An off-topic question is refused — never answered from general model knowledge.</li>
+</ul>
+<p>Every later "is this in scope?" argument was settled against those three lines.</p>
+<h3>V1 vs V2 is a survival decision</h3>
+<p>Near release we froze explicitly: no dashboard redesign, no pipeline animation work, no new voice providers, no RAG edge calibration. Not because those don't matter — each one reopens verified surface area. The last commit is literally titled <code>fix: finalize V1 article and voice UX</code>. Finishing is a feature.</p>
+<div class="callout warn"><span class="tag">How to know when to stop</span>
+A project is done when its acceptance criteria pass <em>in production</em> — not when you run out of ideas.
+If your discovered-issue list grows faster than your fix list, you are polishing, not shipping. Write the
+V2 list down and close it with a straight face.</div>
+<h3>Deterministic state over assumptions</h3>
+<p>The most repeated mistake of the project: treating <em>existence</em> as <em>readiness</em>. A post row existed during generation → the UI showed "View Article". A knowledge document existed → everyone assumed retrieval worked. The cure was always the same: derive behavior from meaningful persisted state.</p>
+<p><strong>"The code works" ≠ "the product works."</strong> AutoAI passed hundreds of unit tests while production login hung on first click and RAG refused every question. Code correctness is one layer; product correctness is the whole path — browser → API → cookie → middleware → database → third-party API → back.</p>
+</section>
+
+<section id="s2">
+<h2><span class="num">02</span>Architecture Before Implementation</h2>
+<p class="lede">Architecture is deciding in advance where truth lives — so when reality disagrees with you, you know exactly which layer lied.</p>
+<h3>Sources of truth (AutoAI examples)</h3>
+<table>
+<tr><th>Question</th><th>Single source of truth</th><th>What we stopped doing</th></tr>
+<tr><td>Which model handles the strategist?</td><td>Purpose config chain: override row → connection default → bootstrap → fallback</td><td>Scattered <code>DEFAULT_AI_*</code> env reads per module</td></tr>
+<tr><td>Is this document searchable?</td><td><code>status='active'</code> + allowed source_type + matching embedding identity</td><td>Assuming "row exists"</td></tr>
+<tr><td>Is the article viewable?</td><td><code>postStatus</code> + <code>postHasContent</code> read live from DB</td><td><code>run.postId ? show : hide</code></td></tr>
+<tr><td>User language?</td><td><code>autoai_locale</code> cookie → messages + direction</td><td>Treating RTL direction as the language state</td></tr>
+</table>
+<h3>Pre-code checklist</h3>
+<ol class="check">
+<li>Where does this data come from?</li>
+<li>Who owns it (which service may write it)?</li>
+<li>Where is it persisted, and what is its lifecycle?</li>
+<li>Who can change it after creation?</li>
+<li>How is it validated at every boundary?</li>
+<li>What happens when the external dependency fails?</li>
+<li>How will production observe it?</li>
+<li>How is it tested at each layer?</li>
+<li>How is it deployed, migrated, rolled back?</li>
+</ol>
+<p>An unanswered item here becomes a production incident later.</p>
+<h3>Failure boundaries are architecture too</h3>
+<p>Draw them explicitly. AutoAI: provider failure ⇒ router tries primary, then fallback, then fails loudly (never silently degrades to mock). Publish-time indexing failure ⇒ surfaced in the API response and audit log. Grounding miss ⇒ deterministic refusal without calling the LLM at all. Every boundary drawn early became a place where failures were contained instead of spread.</p>
+</section>
+
+<section id="s3">
+<h2><span class="num">03</span>Configuration Is Part of the Architecture</h2>
+<p class="lede">AutoAI once shipped correct code that pointed all nine AI roles at a demo mock — because configuration resolution, not code, decided what ran.</p>
+<h3>The incident</h3>
+<p>Production threw, for every purpose:</p>
+<pre><code>AI is not configured for real generation:
+idea: still points at the mock provider; strategist: still points at the mock provider; …</code></pre>
+<p>Cause: the purpose resolver fell back to <code>process.env.DEFAULT_AI_PROVIDER || "mock"</code>, those variables didn't exist on Vercel, and the admin's real OpenRouter key lived in an entirely separate settings surface. Two configuration layers, zero precedence between them.</p>
+<div class="callout good"><span class="tag">Lesson</span>
+A system can contain correct code and still behave incorrectly because configuration resolution is wrong.
+Configuration is architecture — give it precedence, validation and failure behavior like any other component.</div>
+<h3>The precedence chain that fixed it</h3>
+<pre><code>effective = 1. explicit per-purpose override   (Models page save)
+            2. connection default               (Admin → AI Connections)
+            3. documented bootstrap             (real credential + nothing configured)
+            4. demo / mock                      (dev &amp; tests only)</code></pre>
+<p>After this change, stale values could not defeat fresh ones, and a deployment holding only an environment key worked end-to-end without anyone re-typing secrets.</p>
+<h3>Five answers every dependency needs</h3>
+<table>
+<tr><th>Question</th><th>AutoAI example</th></tr>
+<tr><td>Source</td><td>DB row / env var / admin UI</td></tr>
+<tr><td>Precedence</td><td>override &gt; default &gt; bootstrap &gt; fallback</td></tr>
+<tr><td>Validation</td><td>pre-flight guard fails fast, naming every broken purpose</td></tr>
+<tr><td>Fallback</td><td>documented and safe — never silent-mock in prod</td></tr>
+<tr><td>Failure behavior</td><td>clear error listing exactly what misresolved</td></tr>
+</table>
+<h3>Mock is a test fixture, not a runtime option</h3>
+<p>The demo provider hard-fails outside automated tests via a guard only the test runner sets. That converted "accidentally shipped fake answers" from a maybe into an impossibility — while keeping mocks fully usable in unit tests.</p>
+</section>
+
+<section id="s4">
+<h2><span class="num">04</span>AI Providers and Model Abstraction</h2>
+<p class="lede">Providers are swappable infrastructure with per-model capabilities — and every model response is untrusted input until validated.</p>
+<h3>Model identity is more than a string</h3>
+<p>Every stored embedding carries <code>{provider, model, dimensions}</code>, and queries refuse to compare vectors unless the identity matches exactly. That one rule prevents silent corruption whenever models change: vectors from different models must never coexist or mix.</p>
+<h3>Capabilities are data</h3>
+<p>The live provider catalog exposes context length, pricing, supported parameters and structured-output support per model. The Models UI renders it; the request layer consults it. Never assume a model supports JSON-schema mode — ask, and degrade deliberately when it doesn't.</p>
+<h3>The structured-output incident</h3>
+<pre><code>Schema validation failed at "outline.0": Expected string, received object
+— after 3 attempts on openrouter/openai/gpt-4o-mini</code></pre>
+<p>The model kept answering <code>{"outline":[{"angle":"…","audience":"…"}]}</code> where the contract demanded <code>outline: string[]</code>. The prompt embedded only top-level keys as null hints and the request used bare <code>json_object</code> mode — nested shape was pure guesswork, and retries replayed the same guesswork.</p>
+<div class="callout bad"><span class="tag">Anti-pattern</span>
+Treating successful JSON.parse as validation. An LLM response is not trustworthy merely because it is JSON.</div>
+<h3>The defense that works</h3>
+<ol>
+<li><strong>One canonical schema:</strong> Zod contracts compiled to JSON Schema by one utility; the same object goes to the provider AND restates expectations in the prompt.</li>
+<li><strong>Native structured outputs:</strong> <code>response_format: json_schema</code>, strict when safe, with tiered downgrade <code>json_schema → json_object → none</code>.</li>
+<li><strong>Strict local validation:</strong> Zod parses everything; failures quote exact paths (<code>outline.0</code>) into repair requests.</li>
+<li><strong>Bounded repair loop:</strong> same provider/model, explicit "your output was invalid because…", hard attempt cap, then loud failure — never a silent template.</li>
+<li><strong>Wire-level tests:</strong> stubbed fetch asserting actual request bodies — response_format type, strict flag, <code>items.type === "string"</code>.</li>
+</ol>
+<h3>Fallback is policy</h3>
+<p>The router records every attempt (provider/model/latency/ok) and reports <code>fallbackUsed</code>. Fallback exists to survive outages — not to quietly swap a different, cheaper model whose outputs drift from everything you validated.</p>
+</section>
+
+<section id="s5">
+<h2><span class="num">05</span>RAG: Never Trust the Surface</h2>
+<p class="lede">The most important section. In AutoAI, retrieval failed in production while the database contained exactly what everyone assumed it needed: published documents and real 2048-dimensional Nemotron vectors.</p>
+<h3>The retrieval funnel</h3>
+<p>RAG is not one operation — it is a chain of filters, and any stage can silently reduce the result set to zero:</p>
+<div class="funnel">
+<div>User question</div>
+<div>Query embedding (provider / model / dimensions)</div>
+<div>Candidate vectors in the store</div>
+<div>Active documents only</div>
+<div>Allowed source types</div>
+<div>Embedding identity match (provider + model)</div>
+<div>Cosine similarity ranking</div>
+<div>Relevance threshold</div>
+<div>Top-K chunks</div>
+<div>Grounding decision</div>
+<div>LLM response with citations</div>
+</div>
+<div class="callout bad"><span class="tag">Core lesson</span>
+Vectors existing in the database does NOT mean RAG works. Six independent mechanisms sit between the
+vector table and the user's answer, each able to return nothing.</div>
+<h3>Every way the funnel actually broke</h3>
+<table>
+<tr><th>Stage</th><th>Real failure</th><th>How we saw it</th></tr>
+<tr><td>Status filter</td><td>Docs created as drafts stayed <code>inactive</code> forever — even after their post was approved and published, because the update helper ignored status/sourceType fields</td><td>Documents visible in admin UI, absent from every search</td></tr>
+<tr><td>Source type</td><td>Same docs stuck as <code>draft_article</code>; retrieval whitelisted only <code>article</code></td><td>Direct column inspection</td></tr>
+<tr><td>Embedding identity</td><td>A whole identity group with <code>(null, null, null)</code> — created but never successfully indexed; plus any doc whose stored model string diverged from current config</td><td><code>GROUP BY provider,model,dims</code> over the corpus showed an unreachable bucket</td></tr>
+<tr><td>Language filter</td><td>UI locale restricted the corpus: English question + Persian-only corpus = zero candidates by construction</td><td>Funnel counts collapsed exactly at that stage; removed so the multilingual corpus is always searched and the answer language is handled separately</td></tr>
+<tr><td>Threshold</td><td>Cross-language similarity varies wildly per pair: measured 0.224–0.511 for genuinely related fa↔en content against a fixed 0.4 cutoff</td><td>Live probes embedding real questions through the production model</td></tr>
+<tr><td>Ingestion errors</td><td>Publish-time indexing failures swallowed by <code>.catch(() =&gt; {})</code> — publish reported success while vectors never landed</td><td>Confident metadata next to empty vector tables</td></tr>
+<tr><td>Lying metadata</td><td><code>chunk_count = 5</code> while zero rows existed in the chunks table (wiped by a failed full re-index)</td><td>Join count between documents and chunks</td></tr>
+</table>
+<h3>Diagnose one stage at a time</h3>
+<p>The cure was instrumentation, not retrying. A diagnostic endpoint runs ONE real query and prints every stage:</p>
+<pre><code>{
+  "stages": { "totalVectorsInKb": 9, "vectorsInActiveDocs": 9,
+              "vectorsAfterSourceTypeFilter": 9,
+              "vectorsMatchingQueryIdentity": 9 },
+  "storedIdentities": [
+    {"provider":"openrouter","model":"nvidia/nemotron…","dimensions":2048,"documents":2,"vectors":9},
+    {"provider":"(null)","model":"(null)","dimensions":null,"documents":3,"vectors":0}
+  ],
+  "topSimilarities":[0.7344, 0.7048, 0.6962],
+  "threshold": 0.4,
+  "hasRelevant": true
+}</code></pre>
+<p>The stage where a number collapses names the bug. That null-identity group is a smoking gun: three documents nobody could ever retrieve.</p>
+<h3>RAG debugging checklist</h3>
+<ol class="check">
+<li>Pick ONE known document. Confirm active status, correct source_type, correct post link.</li>
+<li>Count REAL vector rows for it (join the chunks table — never trust chunk_count metadata).</li>
+<li>Read stored embedding identity (provider/model/dimensions) off the document row.</li>
+<li>Embed the test question with the same configured identity; confirm dimensions.</li>
+<li>Run the funnel with per-stage counters; find where the candidate set collapses.</li>
+<li>If similarities exist but low: probe paraphrases AND an unrelated baseline question.</li>
+<li>Only now consider the threshold — recalibrate with measurements, never blind-lower it.</li>
+<li>Add a regression test for exactly the stage that lied.</li>
+</ol>
+<div class="callout warn"><span class="tag">Cross-language reality</span>
+Multilingual embeddings are cross-lingual but unevenly. Same model measured: FA→EN twin document 0.224,
+FA→EN earthquake article 0.511, EN→FA 0.433. Pair-dependent variance means thresholds must be calibrated
+with real measurements in both directions — and corpus selection must never be coupled to UI locale.</div>
+</section>
+
+<section id="s6">
+<h2><span class="num">06</span>Grounding and AI Safety</h2>
+<p class="lede">A RAG chatbot becomes a generic chatbot by accident — one helpful completion at a time.</p>
+<h3>The contradiction</h3>
+<p>User asked: <em>"Who is the current president of the United States?"</em> The product claimed to be knowledge-grounded; the assistant answered from world knowledge anyway, appended "No relevant knowledge found", and both statements were true. It was not grounded — it merely suggested sources when retrieval happened to work.</p>
+<h3>Three decision layers</h3>
+<pre><code>retrieval  → does relevant knowledge exist?   (measured)
+policy     → is answering allowed?             (grounding guard)
+generation → LLM sees ONLY permitted context    (strict system rules)</code></pre>
+<h3>Rules that made grounding hold</h3>
+<ul>
+<li><strong>Deterministic refusal before generation.</strong> Nothing relevant → refuse WITHOUT calling the model: fixed sentence, user's language, sources empty. No hallucination is possible when no token is generated.</li>
+<li><strong>Refusal normalization.</strong> If the model inside a grounded call returns the refusal sentence itself, normalize the exchange: clear sources, mark ungrounded, persist as refusal — otherwise fake attributions leak into history and metrics.</li>
+<li><strong>Refusals never become anchors.</strong> Follow-up context walks back to the last GROUNDED exchange (sources present, not a refusal). One off-topic detour must not redirect future topic anchoring.</li>
+<li><strong>Bounded follow-ups.</strong> Short questions ("و قبلش چی؟") re-retrieve as anchored-topic + follow-up text, still measured against the same threshold and still refusable.</li>
+<li><strong>Give the model a legal out:</strong> exact refusal sentence in the system rules, so "not in my knowledge base" has a deterministic form instead of improvised variants.</li>
+</ul>
+<div class="callout good"><span class="tag">Acceptance triplet</span>
+Test every grounding change with: on-topic question (must cite), unrelated question (must refuse with
+empty sources), anchored follow-up (must stay grounded). Run against real embeddings — mock similarity
+scales tell you nothing about production thresholds.</div>
+</section>
+
+<section id="s7">
+<h2><span class="num">07</span>Agent Pipelines Are State Machines</h2>
+<p class="lede">An agent pipeline is not "call AI several times". It is a stateful workflow with human gates, partial failures and multiple executions per entity.</p>
+<h3>Model it explicitly</h3>
+<p>AutoAI editorial flow: <code>idea → strategist → researcher → writer → critic (+revision) → seo → publisher → final_critic → lessons</code>, wrapped in run states <code>queued → running → waiting_for_human → completed | failed | cancelled</code>. Every step persists status, provider/model, latency, score, retries and error — the timeline is reconstructable from the database alone.</p>
+<h3>The stuck-run incident</h3>
+<p>Production: articles visibly <strong>published</strong>, yet Admin → Agent Runs listed their runs as <strong>waiting_for_human</strong>. First hypotheses were wrong (frontend cache? wrong run updated?). The truth:</p>
+<pre><code>approveArticle() finalized ONLY posts.agent_run_id.
+But regeneration creates a NEW run for the SAME post
+and re-points posts.agent_run_id to it.
+⇒ older linked runs stayed waiting_for_human forever.</code></pre>
+<div class="callout bad"><span class="tag">Lesson</span>
+One entity can own MULTIPLE workflow executions — retries, regenerations, corrections. Finalization must
+sweep by foreign key (every waiting run for this post), never by a single cached pointer.</div>
+<h3>Rules extracted</h3>
+<ul>
+<li>Persist transitions the moment they happen; the database IS the state machine, the UI only reads it.</li>
+<li>Human decisions are transitions: approval/rejection finalize all related executions.</li>
+<li>Publish paths outside the review endpoint need identical finalization — hook at the shared service boundary, not per route.</li>
+<li>Idempotency: sweeping zero runs is a valid outcome; running twice must be harmless.</li>
+<li>Zombie <code>running</code> rows from crashed workers need grace-period reclaim so everything terminates.</li>
+</ul>
+</section>
+
+<section id="s8">
+<h2><span class="num">08</span>Database State vs Business State</h2>
+<p class="lede">"The row exists" and "the entity is valid" are different claims. Confusing them is how products lie.</p>
+<table>
+<tr><th>Exists…</th><th>…but logically</th></tr>
+<tr><td>post row during generation</td><td>content empty — nothing viewable</td></tr>
+<tr><td>knowledge document row</td><td>inactive → invisible to retrieval</td></tr>
+<tr><td>document chunk_count = 5</td><td>zero rows in chunks table — lying metadata</td></tr>
+<tr><td>vectors present</td><td>identity mismatched → unreachable by any query</td></tr>
+<tr><td>agent run waiting_for_human</td><td>article already published — stale execution</td></tr>
+<tr><td>voice settings panel rendered</td><td>fields the backend never consumed</td></tr>
+</table>
+<h3>Making validity explicit</h3>
+<ul>
+<li>Treat source-type/status changes as business events (<code>draft_article → article</code> happens at publish), implemented in the data layer — not string cosmetics in the UI.</li>
+<li>Expose readiness through the API from meaningful fields (<code>postStatus</code>, <code>postHasContent</code>) so clients cannot invent state.</li>
+<li>Schedule integrity queries as health checks: orphans in every direction, stale executions, identity buckets. Orphan count zero is a metric, not a cleanup afterthought.</li>
+</ul>
+</section>
+
+<section id="s9">
+<h2><span class="num">09</span>Data Lifecycle</h2>
+<p class="lede">Content lives: create → draft → review → publish → index → update → re-index → delete. Related entities must move together through every transition.</p>
+<pre><code>Post ──▶ Agent Runs ──▶ Agent Steps
+  └────▶ Knowledge Document ──▶ Chunks ──▶ Vectors</code></pre>
+<p>Publishing promotes the knowledge document (<code>draft_article/inactive → article/active</code>) and re-indexes it under the current embedding identity. Editing a published post re-syncs it. Deleting anything leaves zero orphans in both directions.</p>
+<h3>Cleanup is engineering, not janitorial work</h3>
+<p>The production demo-data purge ran as a reviewed operation:</p>
+<ol class="check">
+<li>Dry-run first — print exact rows (id, title, status, createdAt).</li>
+<li>Resolve identifier prefixes to full UUIDs; assert exactly-one match each.</li>
+<li>Keep-list safety assertions: protected ids exist and appear in no delete set.</li>
+<li>Delete in FK-safe order: messages → conversations → chunks → documents → steps → runs → posts.</li>
+<li>No TRUNCATE. Ever.</li>
+<li>Post-verify: deleted gone, keep-list intact, orphan counts zero, survivor integrity (published article still had its 2 vectors / 2048 dims / metadata).</li>
+</ol>
+<div class="callout warn"><span class="tag">Never</span>
+"Delete everything that looks like test data." Heuristic deletion against production destroys real
+content. Explicit IDs + dry-run + keep-list assertions — every single time.</div>
+</section>
+
+<section id="s10">
+<h2><span class="num">10</span>Migrations and Real Databases</h2>
+<p class="lede">Some columns are load-bearing in ways normal types are not. Vector dimensions are the canonical case.</p>
+<p>Moving embeddings from 1536 to 2048 dimensions is not an <code>ALTER COLUMN</code>. Old vectors are permanently incompatible with new queries — mixing them corrupts every similarity search. The order is fixed:</p>
+<pre><code>accept old vectors are dead
+→ wipe/rebuild dependent vector data
+→ migrate schema  vector(1536) → vector(2048)
+→ re-index EVERYTHING under the new model
+→ verify identity metadata on every document</code></pre>
+<p>AutoAI ties the dimension to one constant used by both the column type and the runtime validator, with an explicit rule: vectors are never truncated or padded — mismatch fails loudly and demands full re-index.</p>
+<div class="callout warn"><span class="tag">Local ≠ proof</span>
+PGlite passing locally cannot prove PostgreSQL behavior for extensions, planners, locks or concurrent
+writers. Verify critical database behavior against the real engine. And note: file-based local databases
+enforce single-writer assumptions your cross-process smoke tests will trip over.</div>
+</section>
+
+<section id="s11">
+<h2><span class="num">11</span>Local ≠ Production</h2>
+<p class="lede">local ≠ Vercel ≠ Neon ≠ OpenRouter. Every boundary adds failure modes your laptop never exercised.</p>
+<ul>
+<li><strong>Env defaults fire where variables are missing</strong> — which happens first in production (<code>|| "mock"</code> became nine broken purposes).</li>
+<li><strong>Auth rules differ by design:</strong> development accepts seed credentials; production rejects them and must not even display hints about them.</li>
+<li><strong>Cookies &amp; middleware:</strong> client router caches and Set-Cookie timing behave differently behind edge deployments (the first-login hang).</li>
+<li><strong>Runtime concurrency:</strong> file-based local databases are single-writer — cross-process smoke scripts silently see a different world than the app process.</li>
+<li><strong>Data drift:</strong> production accumulates states local never reproduced (null identities, mixed languages, stale runs).</li>
+<li><strong>Provider catalogs drift:</strong> free models vanish, capability flags change; hardcoding yesterday's catalog is a future outage.</li>
+</ul>
+<div class="callout good"><span class="tag">Production proof</span>
+A feature is finished when the ACTUAL deployed path passes: real URL, real session, real database, real
+keys — observed via network tab or diagnostics endpoints. Until then the honest status is "works locally".</div>
+</section>
+
+<section id="s12">
+<h2><span class="num">12</span>Debugging: Find the First Divergence</h2>
+<p class="lede">The discipline that ended AutoAI's longest debug loops — including two separate "impossible" production bugs.</p>
+<pre><code>Expected behavior   → write it down first
+Observed behavior   → capture real evidence
+Stages              → decompose the path into measurable steps
+Measure each stage  → counters, values, statuses
+FIRST divergence    → earliest stage where expected ≠ observed
+Fix root cause      → that stage only
+Regression test     → lock the exact case
+Production verify   → prove it on the real path</code></pre>
+<h3>Showcase 1: the RAG funnel</h3>
+<p>"Chat returns no knowledge for everything" decomposed into the §05 funnel. Per-stage counters immediately separated three distinct incidents: identity mismatch (null buckets), status/source-type staleness, and language-coupled corpora. Three root causes, one diagnostic endpoint, zero random code changes.</p>
+<h3>Showcase 2: the login hang</h3>
+<pre><code>form → POST /api/auth/login → 200 + Set-Cookie ✓
+     → router.push("/admin") ✗ client cache held the UNAUTHENTICATED payload
+     → router.refresh() raced/cancelled the push
+     → spinner never resolves
+manual refresh → cache warm with fresh cookie → next click succeeds</code></pre>
+<p>The network tab proved authentication succeeded; measurement localized the divergence to the navigation stage. The fix (full-document navigation so middleware always sees the fresh cookie) was three lines. Guessing "session bug" would have rewritten working auth.</p>
+<div class="callout good"><span class="tag">Why it prevents endless loops</span>
+Random fixing changes code; measurement changes understanding. Once the first divergence is named,
+everything upstream is exonerated and everything downstream is irrelevant.</div>
+</section>
+
+<section id="s13">
+<h2><span class="num">13</span>Testing AI Systems</h2>
+<p class="lede">AutoAI grew from 49 to 83 tests across these fixes. But counts are trivia; layers are the point.</p>
+<table>
+<tr><th>Layer</th><th>Proves</th><th>AutoAI example</th></tr>
+<tr><td>Unit</td><td>Pure decision logic</td><td>config-precedence matrix · view-article gate · refusal thresholds</td></tr>
+<tr><td>Contract</td><td>Public shapes stay honest</td><td>voice settings expose exactly 3 real fields</td></tr>
+<tr><td>Regression</td><td>The historical bug never returns</td><td><code>outline[0]</code> object rejection · i18n key parity</td></tr>
+<tr><td>Wire-level</td><td>Actual HTTP contracts</td><td>stubbed fetch asserting <code>response_format.json_schema.strict</code> + item types</td></tr>
+<tr><td>Real provider</td><td>The model behaves</td><td>Persian/English structured outputs vs live gpt-4o-mini</td></tr>
+<tr><td>Real database</td><td>Storage behaves</td><td>pgvector dims, orphan sweeps, funnel counters on Neon</td></tr>
+<tr><td>Production smoke</td><td>Deployed path works</td><td>health + authenticated diagnostics on the live URL</td></tr>
+</table>
+<div class="callout warn"><span class="tag">Hard truth</span>
+Mock PASS proves logic. OpenRouter PASS proves product. The structured-output bug passed every mock test
+while failing every real request — because the mock fills keys by name instead of negotiating schemas the
+way a model does.</div>
+<p>Also true in reverse: a wire-level test asserting request shape would have caught the bug before any deployment, without spending a single token. Layered tests exist so each layer catches what the previous one structurally cannot.</p>
+</section>
+
+<section id="s14">
+<h2><span class="num">14</span>Security and Secrets</h2>
+<ul>
+<li><strong>Keys live server-side.</strong> Provider calls execute in backend routes; browsers receive sanitized catalogs and booleans (<code>hasKey: true</code>). Verified by scanning every admin response body for key fragments.</li>
+<li><strong>Secret-scan every commit.</strong> Patterns for key prefixes, connection strings, private-key headers, passwords over the staged diff. Eight consecutive pushes, zero leaks — because the scan ran every time.</li>
+<li><strong>Temporary injection pattern.</strong> Production DB cleanup used a credential staged in an OS temp file, read into env per command, deleted immediately after. Never echoed, never committed.</li>
+<li><strong>Dev-only messaging is surface area.</strong> "Default credentials are set in .env.local" shipped unconditionally on the production login page — inside translation JSON, invisible to component review. Removed at both layers, enforced by a test grepping message files AND the built bundle.</li>
+<li><strong>Demo credentials are production-rejected by design,</strong> and bootstrap requires explicitly configured environment values.</li>
+<li><strong>Auth hardening stack:</strong> open-redirect guard on post-login targets, httpOnly+SameSite cookies, middleware-guarded admin APIs, AUTH_SECRET length enforced at boot, session tokens treated as revocable secrets.</li>
+</ul>
+<div class="callout bad"><span class="tag">Near-miss worth naming</span>
+A session token pasted for debugging was staged to a temp file like a credential and deleted after use.
+Treat EVERY authenticator — keys, cookies, connection strings — with the same lifecycle: inject → use →
+destroy → verify destroyed.</div>
+</section>
+
+<section id="s15">
+<h2><span class="num">15</span>I18N Is Not Just Translation</h2>
+<p class="lede">Production report: switching to Persian left English strings everywhere; switching back flipped only direction while text stayed Persian.</p>
+<h3>The contract</h3>
+<pre><code>locale ("fa" | "en")
+   ├─▶ messages[locale]
+   └─▶ dir = rtl | ltr        (derived — NEVER the language state)</code></pre>
+<h3>What actually broke</h3>
+<p>The switcher wrote the cookie and updated client dictionaries — but server-rendered components had already been generated under the old cookie. Direction flipped instantly (client effect); strings lagged until some later full request. Half-translated pages that looked like a rendering bug were a refresh-boundary bug.</p>
+<h3>The fix set</h3>
+<ul>
+<li>Locale switch triggers <code>router.refresh()</code> so ALL server components re-render under the new cookie.</li>
+<li>Persistence via one year-long cookie read identically by layout, server i18n helper and client provider.</li>
+<li>Key-parity regression tests: EN key set must equal FA key set (633 = 633), no empty values.</li>
+<li>Direction always derived (<code>isRTL(locale)</code>) on both server render and client effect.</li>
+</ul>
+<div class="callout warn"><span class="tag">Subtle trap</span>
+Direction is presentation; locale is data. Any code inferring language FROM <code>dir</code> — or setting
+<code>dir</code> as if choosing a language — couples two systems that must evolve independently.</div>
+</section>
+
+<section id="s16">
+<h2><span class="num">16</span>UI Should Reflect Real System State</h2>
+<p class="lede">During generation, users clicked "View Article" into an empty shell. The guard was <code>run.postId != null</code> — true from the moment the pipeline reserved a placeholder post.</p>
+<table>
+<tr><th>ID exists…</th><th>…≠ meaningful state</th></tr>
+<tr><td>post.id</td><td>post has viewable content</td></tr>
+<tr><td>knowledge_document.id</td><td>document searchable</td></tr>
+<tr><td>agent_run.id</td><td>run currently executing</td></tr>
+<tr><td>voice panel rendered</td><td>settings actually consumed by backend</td></tr>
+</table>
+<p>Fix pattern: expose REAL state through the API (<code>postStatus</code>, <code>postHasContent</code> read live from DB), gate through a pure function, cover with a matrix test (7 cases: empty draft hidden during queued/running/failed; published/needs_review/saved-draft visible).</p>
+<div class="callout good"><span class="tag">Rule</span>
+UI actions derive from meaningful business state delivered by the backend — never from identifier
+existence, timers, or client-side guesses about async progress.</div>
+<p>The same principle caught the voice settings panel: it rendered inputs for fields the implementation never read (STT/TTS providers, LLM model pickers) while omitting what it DID consume. The rewrite exposed a live capability status (browser Web Speech API, supported languages, resolved engine) plus only the three genuinely configurable fields — verified by a contract test asserting the exact exposed key set.</p>
+</section>
+
+<section id="s17">
+<h2><span class="num">17</span>Scope Control and V1/V2</h2>
+<p class="lede">Not every discovered defect belongs to the current release. AutoAI's final phase survived because scope was locked in writing — forbidden files listed by name.</p>
+<table>
+<tr><th>Class</th><th>Definition</th><th>Real example</th></tr>
+<tr><td>P0</td><td>Blocks core workflow / correctness / security</td><td>purposes→mock; RAG returning nothing; first-login hang</td></tr>
+<tr><td>P1</td><td>Important, contained fix</td><td>language-filtered retrieval; honest voice panel</td></tr>
+<tr><td>P2</td><td>Polish</td><td>pipeline animation, dashboard layout, loading micro-states</td></tr>
+<tr><td>V2</td><td>Future capability</td><td>new voice providers, image system, threshold calibration research</td></tr>
+</table>
+<h3>Five-question gate for any new issue</h3>
+<ol class="check">
+<li>Does it block the core workflow?</li>
+<li>Does it break correctness?</li>
+<li>Does it create security risk?</li>
+<li>Does it prevent demonstrating the product?</li>
+<li>Does it require architectural change?</li>
+</ol>
+<p>Any YES → now. All NO → V2 backlog, written down, closed with a straight face.</p>
+<div class="callout warn"><span class="tag">Endless polish kills</span>
+Every "small improvement" to finished code re-opens verified surface and spends trust you just built.
+AutoAI's freeze memo named forbidden files explicitly. That memo is why the release happened.</div>
+</section>
+
+<section id="s18">
+<h2><span class="num">18</span>The Complete AI Project Checklist</h2>
+<p class="lede">Walk this before writing code — and again before shipping. Click items as you complete them.</p>
+<h3>Phase 0 — Define</h3>
+<ul class="check">
+<li>Problem statement (one paragraph)</li>
+<li>User + primary workflow</li>
+<li>Success criteria (observable, testable)</li>
+<li>V1 scope written; V2 backlog written and closed</li>
+</ul>
+<h3>Phase 1 — Architecture</h3>
+<ul class="check">
+<li>Sources of truth per domain</li>
+<li>Data lifecycle diagram</li>
+<li>State machine(s) incl. human gates</li>
+<li>External dependencies + failure boundaries</li>
+<li>Configuration precedence designed</li>
+</ul>
+<h3>Phase 2 — AI</h3>
+<ul class="check">
+<li>Provider abstraction behind one interface</li>
+<li>Per-model capability verification (live catalog)</li>
+<li>Structured-output strategy + strict validation</li>
+<li>Embedding model + frozen dimensions + provenance storage</li>
+<li>Fallback policy (never silent-degrade)</li>
+<li>Mock strategy (test-only, guarded)</li>
+</ul>
+<h3>Phase 3 — Data</h3>
+<ul class="check">
+<li>Schema + constraints + indexes</li>
+<li>Vector dimensions tied to one constant</li>
+<li>Re-index strategy for model/dimension changes</li>
+<li>Cleanup tooling: dry-run, keep-list, orphan checks</li>
+</ul>
+<h3>Phase 4 — RAG</h3>
+<ul class="check">
+<li>Ingestion + chunking parameters</li>
+<li>Publish/update/delete hooks guarantee index sync</li>
+<li>Metadata: source type, status, identity, timestamps</li>
+<li>Retrieval funnel instrumented per stage</li>
+<li>Threshold calibrated on real measurements</li>
+<li>Grounding policy + deterministic refusal + follow-up anchors</li>
+</ul>
+<h3>Phase 5 — Agents</h3>
+<ul class="check">
+<li>Explicit persisted state machine</li>
+<li>Step tracking with provider/model/retries</li>
+<li>Multiple executions per entity supported</li>
+<li>Human gate + terminal-state sweep</li>
+<li>Zombie-run reclaim</li>
+</ul>
+<h3>Phase 6 — Security</h3>
+<ul class="check">
+<li>Secrets server-side; scan every commit</li>
+<li>AuthN/AuthZ middleware guards</li>
+<li>Production guards against demo/mock paths</li>
+<li>No dev-only messaging in prod bundles</li>
+</ul>
+<h3>Phase 7 — Testing</h3>
+<ul class="check">
+<li>Unit tests for pure decisions</li>
+<li>Contract tests for public shapes</li>
+<li>Wire-level provider tests</li>
+<li>Real-provider + real-database suites</li>
+<li>Production smoke checklist</li>
+</ul>
+<h3>Phase 8 — Deployment</h3>
+<ul class="check">
+<li>All env vars enumerated + validated at boot</li>
+<li>Migrations ordered incl. destructive/vector cases</li>
+<li>Build green; runtime smoke on real URL</li>
+<li>Diagnostics endpoints + logs reachable</li>
+</ul>
+<h3>Phase 9 — Ship</h3>
+<ul class="check">
+<li>V1 scope respected (freeze memo honored)</li>
+<li>Known issues documented as V2</li>
+<li>Rollback strategy stated</li>
+<li>Demo rehearsed against production data</li>
+<li>Final QA = acceptance criteria ticked</li>
+</ul>
+</section>
+
+<section id="s19">
+<h2><span class="num">19</span>The 10 Rules I Wish I Knew Before Starting</h2>
+<div class="grid2">
+<div class="rule"><b>1. If you cannot define "done", you are not ready to code.</b><span>Undefined done = infinite polish = unshipped project.</span></div>
+<div class="rule"><b>2. JSON is not validation.</b><span>A parseable model response can still be structurally wrong. Validate schemas locally, always.</span></div>
+<div class="rule"><b>3. A vector in a database does not mean RAG works.</b><span>Identity, status, source-type, language and threshold all stand between the vector and the answer.</span></div>
+<div class="rule"><b>4. IDs are not business state.</b><span>An existing row is not a ready entity. Gate UI on meaning, not pointers.</span></div>
+<div class="rule"><b>5. Mock success is not production success.</b><span>Mocks prove logic; only real providers prove products — on the wire and live.</span></div>
+<div class="rule"><b>6. Find the first divergence, not the most suspicious code.</b><span>Instrument stages and let evidence name the guilty layer.</span></div>
+<div class="rule"><b>7. Every workflow needs an explicit persisted state machine.</b><span>Especially with humans in the loop and multiple executions per entity.</span></div>
+<div class="rule"><b>8. Production is another environment, not just another URL.</b><span>Env resolution, caches, auth rules and data drift are waiting there.</span></div>
+<div class="rule"><b>9. Not every problem belongs in V1.</b><span>Write the V2 list down and close it deliberately.</span></div>
+<div class="rule"><b>10. Done = acceptance criteria pass in production.</b><span>Not out-of-ideas, not tired — ticked boxes on the real path.</span></div>
+</div>
+</section>
+
+<section id="s20">
+<h2><span class="num">20</span>Case Studies — What Actually Happened</h2>
+<p class="lede">Seven production incidents, compressed. Expand for symptom → wrong assumption → investigation → root cause → fix → transferable lesson.</p>
+
+<details class="case" id="c1"><summary>Case 1 — LLM structured output failure</summary><div class="body">
+<h4>Symptom</h4><p><code>Schema validation failed at "outline.0": Expected string, received object</code> after 3 attempts on gpt-4o-mini — intermittent, real traffic only.</p>
+<h4>Wrong assumption</h4><p>"We send the schema, so the model follows it." The 'schema' was top-level keys mapped to null; nested shapes were never communicated, and retries replayed identical ambiguity.</p>
+<h4>Investigation</h4><p>Reproduced live; captured actual request bodies; found bare <code>json_object</code> mode and null-hint prompts; confirmed the repair loop restated the same ambiguous hint.</p>
+<h4>Root cause</h4><p>Provider contract ≠ application contract. No native structured output; nested types existed nowhere outside Zod.</p>
+<h4>Fix</h4><p>One Zod→JSON-Schema compiler feeding native <code>json_schema</code> mode (strict when safe) AND the prompt; tiered downgrade <code>json_schema→json_object→none</code>; strict local validation quoting paths into bounded repairs; wire-level regression tests asserting <code>items.type=="string"</code>.</p>
+<h4>Lesson</h4><p>JSON is not validation. One canonical schema must feed provider, prompt, parser and validator — anything less invites drift between what you expect and what you asked for.</p>
+</div></details>
+
+<details class="case" id="c2"><summary>Case 2 — RAG vectors existed but retrieval failed</summary><div class="body">
+<h4>Symptom</h4><p>"No relevant knowledge" for every question while Neon held published documents and real 2048-d Nemotron vectors.</p>
+<h4>Wrong assumption</h4><p>"Vectors exist ⇒ retrieval works."</p>
+<h4>Investigation</h4><p>Stage-by-stage funnel diagnosis: total vectors → active-docs → source-type → identity-match → similarities → threshold. Also direct probes embedding real questions through the production model.</p>
+<h4>Root cause</h4><p>Multiple stacked causes across incidents: documents stuck <code>draft_article/inactive</code>; a publish-time update helper silently ignoring those columns; null embedding-identity rows unreachable by any query; swallowed indexing errors faking success; a UI-language filter zeroing cross-language corpora.</p>
+<h4>Fix</h4><p>Canonical promotion at publish; single authoritative indexer with loud failures; per-stage diagnostics endpoint; removal of locale-coupled corpus filtering; integrity checks (orphans, identity groups).</p>
+<h4>Lesson</h4><p>Never debug RAG as a unit. Instrument the funnel; the collapsing stage names the bug — and "vectors exist" is never evidence.</p>
+</div></details>
+
+<details class="case" id="c3"><summary>Case 3 — Published article stayed waiting_for_human</summary><div class="body">
+<h4>Symptom</h4><p>Admin → Agent Runs showed runs awaiting approval for articles that were already publicly published.</p>
+<h4>Wrong assumption</h4><p>"Frontend shows stale data" / "the wrong run got updated." Both false.</p>
+<h4>Investigation</h4><p>Traced approval flow: finalize logic updated only <code>posts.agent_run_id</code>. But regeneration inserts a NEW run per post and re-points that column — older linked runs were orphaned in waiting state forever.</p>
+<h4>Root cause</h4><p>One-entity-one-execution assumption inside a multi-execution workflow; plus publish paths outside the review API never finalized anything.</p>
+<h4>Fix</h4><p><code>finalizeWaitingRunsForPost(postId)</code> sweeping every <code>waiting_for_human</code> run by foreign key; wired into approve, reject AND the shared status-transition service; idempotent; covered by matrix regression tests.</p>
+<h4>Lesson</h4><p>Workflows terminate by relationship sweeps, not pointer updates — and every path that changes business state must trigger the same terminal transitions.</p>
+</div></details>
+
+<details class="case" id="c4"><summary>Case 4 — Login worked only after refresh</summary><div class="body">
+<h4>Symptom</h4><p>Valid credentials + click → infinite spinner. Refresh → click again → success.</p>
+<h4>Wrong assumption</h4><p>"Session bug" / "middleware rejects first cookie." Network tab disproved both: the login POST returned 200 with Set-Cookie on the FIRST attempt.</p>
+<h4>Investigation</h4><p>Stage-by-stage: auth ✓, cookie ✓, navigation ✗ — client router cache still held the unauthenticated /admin payload, and <code>router.refresh()</code> raced <code>router.push()</code>, leaving the spinner mounted.</p>
+<h4>Root cause</h4><p>Client-side navigation racing its own cache after an auth-state change that only the server had seen.</p>
+<h4>Fix</h4><p>Full-document navigation post-login (<code>window.location.assign</code> to a sanitized internal target) so middleware always evaluates the fresh cookie; spinner resolves by page transition; open-redirect guard added.</p>
+<h4>Lesson</h4><p>Auth-state changes demand full navigations or explicit cache invalidation. Client caches do not know your cookie changed.</p>
+</div></details>
+
+<details class="case" id="c5"><summary>Case 5 — Language switched direction but not content</summary><div class="body">
+<h4>Symptom</h4><p>FA↔EN toggle flipped RTL/LTR instantly while most text remained in the previous language; other pages mixed languages entirely.</p>
+<h4>Wrong assumption</h4><p>"Translation files are missing keys." Parity check showed 628=628 keys, zero gaps.</p>
+<h4>Investigation</h4><p>Compared client-side dictionary updates (instant) against server-rendered sections (stale until full request). The switcher updated cookie + client state but never re-rendered server components.</p>
+<h4>Root cause</h4><p>Two render sources (client context + server components) sharing one cookie, with the switcher updating only one side.</p>
+<h4>Fix</h4><p><code>setLocale</code> triggers <code>router.refresh()</code>; single cookie contract read identically by layout/server-i18n/client provider; parity + script-change regression tests added.</p>
+<h4>Lesson</h4><p>Locale ≠ direction, and hybrid render trees need ONE transition that refreshes BOTH sides. Also: audit bundles — a dev-only credential hint had shipped to production inside translations.</p>
+</div></details>
+
+<details class="case" id="c6"><summary>Case 6 — View Article appeared before content existed</summary><div class="body">
+<h4>Symptom</h4><p>During generation, "View Article" opened an empty shell.</p>
+<h4>Wrong assumption</h4><p>"postId exists means there's something to see." The pipeline reserves an empty placeholder post up-front, so postId was true from millisecond one.</p>
+<h4>Investigation</h4><p>Inspected what the API actually exposed (nothing about readiness) versus what the DB contained (<code>status='draft'</code>, empty content).</p>
+<h4>Root cause</h4><p>UI action gated on identifier existence instead of business state.</p>
+<h4>Fix</h4><p>API exposes <code>postStatus</code>+<code>postHasContent</code> read live; pure <code>canViewArticle()</code> gate with a 7-case matrix test; verified end-to-end by flipping a published article to empty-draft and back through the admin API — gate hid, then restored with content intact.</p>
+<h4>Lesson</h4><p>Gate actions on business state delivered by the backend. IDs are pointers, not predicates.</p>
+</div></details>
+
+<details class="case" id="c7"><summary>Case 7 — Voice settings appeared empty/fake</summary><div class="body">
+<h4>Symptom</h4><p>Voice Agent settings blank when no config row existed; when present, full of provider/model fields the runtime ignored.</p>
+<h4>Wrong assumption</h4><p>"The form just needs wiring up." Reading the service showed which fields the reply pipeline ACTUALLY consumes: ragEnabled, systemPrompt, temperature — nothing else.</p>
+<h4>Investigation</h4><p>Grepped every consumer of the config object; confirmed STT/TTS run entirely in-browser via Web Speech API and the LLM resolves per-purpose from model configuration.</p>
+<h4>Root cause</h4><p>UI mirrored a hypothetical architecture (external STT/TTS + selectable models) instead of the real one (browser APIs + purpose-routed LLM). Plus null-config rendered literally nothing.</p>
+<h4>Fix</h4><p>Honest panel: capability status (browser Web Speech, languages EN/FA, live resolved engine) + exactly the three real controls; whitelist PATCH; contract test asserting the exposed key set equals the consumed set; defaults so the panel never blanks.</p>
+<h4>Lesson</h4><p>Settings UIs must expose the intersection of what users can change and what the system reads. Everything else is fiction that erodes trust — and a contract test can enforce honesty forever.</p>
+</div></details>
+
+<div class="callout good"><span class="tag">Closing note</span>
+None of these seven failures involved exotic technology. Every one traces to a boundary drawn too late:
+config precedence, render boundaries, state-machine sweeps, cache invalidation, corpus filters, ID-based
+gating, UI/backend contract drift. Draw the boundaries early — or meet them in production.</div>
+</section>
+
+<footer>Built as the engineering record of AutoAI for Nature V1 — every section maps to a real commit,
+incident or verification run. Freely reusable; keep the lessons, swap the war stories.</footer>
+</main>
+</div>
+
+<script>
+(function(){
+  // Theme
+  var themeBtn=document.getElementById('themeBtn');
+  function applyTheme(t){document.documentElement.classList.toggle('dark',t==='dark');}
+  var stored=null;try{stored=localStorage.getItem('fg-theme')}catch(e){}
+  if(stored)applyTheme(stored);
+  themeBtn.addEventListener('click',function(){
+    var dark=!document.documentElement.classList.contains('dark');
+    applyTheme(dark?'dark':'light');
+    try{localStorage.setItem('fg-theme',dark?'dark':'light')}catch(e){}
+  });
+
+  // Build TOC: quick-start group + numbered deep-dive chapters
+  var list=document.getElementById('tocList');
+  var allSecs=[].slice.call(document.querySelectorAll('main section[id]'));
+  var secs=allSecs.filter(function(s){return !s.classList.contains('qs');});
+  var qsNav=document.createElement('ul');
+  qsNav.style.cssText='list-style:none;margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid var(--line)';
+  [['#qs-start','Start here · 10 min'],
+   ['#qs-core','The 10-minute core'],
+   ['#qs-divergence','Find the first divergence'],
+   ['#qs-30min','Got 30 minutes?'],
+   ['#qs-checklist','Project checklist'],
+   ['#qs-deepdive','Deep dive ↓'],
+   ['#s20','Case studies']].forEach(function(p){
+    var li=document.createElement('li');var a=document.createElement('a');
+    a.href=p[0];a.textContent=p[1];
+    a.style.cssText='display:block;padding:3px 9px;font-weight:600';
+    li.appendChild(a);qsNav.appendChild(li);
+  });
+  list.parentNode.insertBefore(qsNav,list);
+  secs.forEach(function(s){
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+s.id;
+    a.textContent=(s.querySelector('h2 .num')?s.querySelector('h2 .num').textContent+' ':'')+s.querySelector('h2').textContent.replace(/^\s*\d+\s*/,'');
+    a.setAttribute('data-target',s.id);
+    li.appendChild(a);list.appendChild(li);
+  });
+
+  // Scrollspy
+  var links={};[].slice.call(list.querySelectorAll('a')).forEach(function(a){links[a.getAttribute('data-target')]=a});
+  function spy(){
+    var y=window.scrollY+90,current=allSecs[0];
+    allSecs.forEach(function(s){if(s.offsetTop<=y)current=s;});
+    [].slice.call(list.querySelectorAll('a')).forEach(function(a){a.classList.remove('active')});
+    if(current&&links[current.id])links[current.id].classList.add('active');
+    var h=document.documentElement;
+    var max=h.scrollHeight-h.clientHeight;
+    document.getElementById('progress').style.width=(max>0?(window.scrollY/max)*100:0)+'%';
+  }
+  window.addEventListener('scroll',spy,{passive:true});spy();
+
+  // Copy buttons on pre blocks
+  [].slice.call(document.querySelectorAll('pre')).forEach(function(pre){
+    var btn=document.createElement('button');btn.className='copybtn toolbtn';btn.textContent='Copy';
+    btn.addEventListener('click',function(){
+      var txt=pre.querySelector('code')?pre.querySelector('code').textContent:pre.textContent;
+      if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){btn.textContent='Copied';setTimeout(function(){btn.textContent='Copy'},1200);});}
+      else{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);btn.textContent='Copied';setTimeout(function(){btn.textContent='Copy'},1200);}
+    });
+    pre.appendChild(btn);
+  });
+
+  // Checklist interaction (click to strike)
+  [].slice.call(document.querySelectorAll('ol.check li, ul.check li')).forEach(function(li){
+    li.addEventListener('click',function(){li.classList.toggle('done');});
+  });
+
+  // Expand/collapse case studies
+  var expBtn=document.getElementById('expandAll'),expanded=false;
+  expBtn.addEventListener('click',function(){
+    expanded=!expanded;
+    [].slice.call(document.querySelectorAll('details.case')).forEach(function(d){d.open=expanded;});
+    expBtn.textContent=expanded?'Collapse cases':'Expand cases';
+  });
+  window.addEventListener('beforeprint',function(){[].slice.call(document.querySelectorAll('details.case')).forEach(function(d){d.open=true;});});
+
+  // Search: highlight matches within main, hide non-matching sections
+  var box=document.getElementById('searchbox');
+  var originals=[];
+  allSecs.forEach(function(s){
+    s.setAttribute('data-orig',s.innerHTML);
+    originals.push(s.innerHTML);
+  });
+  box.addEventListener('input',function(){
+    var q=box.value.trim();
+    allSecs.forEach(function(s,i){
+      var original=s.getAttribute('data-orig');
+      if(q===''){s.innerHTML=original;s.classList.remove('hidden');return;}
+      var lower=original.toLowerCase();
+      var idx=lower.indexOf(q.toLowerCase());
+      var textHit=idx>=0;
+      // also match against plain-text content
+      var tmp=document.createElement('div');tmp.innerHTML=original;
+      if(!textHit){textHit=tmp.textContent.toLowerCase().indexOf(q.toLowerCase())>=0;}
+      s.classList.toggle('hidden',!textHit);
+      if(textHit&&q.length>1){
+        // highlight in text nodes only (safe re-highlight from scratch each input)
+        var walker=document.createTreeWalker(s,NodeFilter.SHOW_TEXT,null,false);
+        var nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+        nodes.forEach(function(n){
+          var low=n.nodeValue.toLowerCase();var pos=low.indexOf(q.toLowerCase());
+          if(pos>=0&&!n.parentNode.closest('mark')){
+            var frag=document.createDocumentFragment();
+            var rest=n.nodeValue;
+            while(true){
+              var p=rest.toLowerCase().indexOf(q.toLowerCase());
+              if(p<0){frag.appendChild(document.createTextNode(rest));break;}
+              frag.appendChild(document.createTextNode(rest.slice(0,p)));
+              var mk=document.createElement('mark');mk.className='hit';
+              mk.appendChild(document.createTextNode(rest.slice(p,p+q.length)));
+              frag.appendChild(mk);
+              rest=rest.slice(p+q.length);
+            }
+            n.parentNode.replaceChild(frag,n);
+          }
+        });
+      }
+    });
+    // hide TOC entries of hidden sections
+    allSecs.forEach(function(s){
+      var a=links[s.id];if(a)a.parentElement.classList.toggle('hidden',s.classList.contains('hidden'));
+    });
+  });
+
+  // Quick-start checklist persistence (localStorage)
+  var cl=document.getElementById('qsChecklist');
+  if(cl){
+    var KEY='fg-checklist';
+    var savedState=[];try{savedState=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
+    [].slice.call(cl.children).forEach(function(li){
+      var k=li.getAttribute('data-k');
+      if(savedState.indexOf(k)>=0)li.classList.add('done');
+      li.addEventListener('click',function(){
+        li.classList.toggle('done');
+        var state=[].slice.call(cl.children)
+          .filter(function(x){return x.classList.contains('done')})
+          .map(function(x){return x.getAttribute('data-k')});
+        try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}
+      });
+    });
+    document.getElementById('resetChecklist').addEventListener('click',function(){
+      try{localStorage.removeItem(KEY)}catch(e){}
+      [].slice.call(cl.children).forEach(function(li){li.classList.remove('done')});
+    });
+  }
+})();
+</script>
+</body>
+</html>
+

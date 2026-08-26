@@ -1,5 +1,14 @@
 # AutoAI For Nature
 
+> 🧠 **AI Software Engineering Field Guide** — 20 engineering lessons and 7 real production
+> case studies from building, debugging, testing and shipping AutoAI.
+> Start with the [10-minute Quick Start](./docs/AI-SOFTWARE-ENGINEERING-FIELD-GUIDE.md#start-here--10-minutes-that-can-change-how-you-build-ai-systems),
+> follow the [30-minute practical path](./docs/AI-SOFTWARE-ENGINEERING-FIELD-GUIDE.md#got-30-minutes),
+> or explore the
+> [full engineering guide (Markdown)](./docs/AI-SOFTWARE-ENGINEERING-FIELD-GUIDE.md) ·
+> [interactive HTML edition](./docs/ai-software-engineering-field-guide.html)
+> *(download/open locally — GitHub shows HTML as source)*.
+
 An AI-powered nature content platform. AutoAI For Nature combines **agentic
 article generation** (a 9-agent editorial pipeline with a human-in-the-loop
 review stage), **retrieval-augmented generation (RAG)** over a pgvector
