@@ -22,6 +22,15 @@ export function isRTL(locale: Locale): boolean {
   return locale === "fa";
 }
 
+/** All leaf translation keys of a dictionary, dot-notation ("admin.models.title"). */
+export function flattenKeys(dict: unknown, prefix = ""): string[] {
+  if (!dict || typeof dict !== "object") return [];
+  return Object.entries(dict as Record<string, unknown>).flatMap(([key, value]) => {
+    const path = prefix ? `${prefix}.${key}` : key;
+    return value && typeof value === "object" ? flattenKeys(value, path) : [path];
+  });
+}
+
 type Params = Record<string, string | number>;
 
 function resolvePath(obj: unknown, path: string): unknown {

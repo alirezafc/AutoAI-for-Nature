@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   DEFAULT_LOCALE,
   getDictionary,
@@ -49,6 +50,7 @@ export function IntlProvider({
   children: ReactNode;
   initialLocale: Locale;
 }) {
+  const router = useRouter();
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
@@ -63,12 +65,23 @@ export function IntlProvider({
     document.documentElement.dir = isRTL(locale) ? "rtl" : "ltr";
   }, [locale]);
 
-  const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
-    writeCookie(COOKIE, next);
-    document.documentElement.lang = next;
-    document.documentElement.dir = isRTL(next) ? "rtl" : "ltr";
-  }, []);
+  /**
+   * Single authoritative locale transition:
+   * cookie (persistence) -> client state (client-side messages) ->
+   * router.refresh() so EVERY server component re-renders with the new
+   * locale cookie. Without the refresh, server-rendered text stays in the
+   * previous language while only direction flips — the exact production bug.
+   */
+  const setLocale = useCallback(
+    (next: Locale) => {
+      setLocaleState(next);
+      writeCookie(COOKIE, next);
+      document.documentElement.lang = next;
+      document.documentElement.dir = isRTL(next) ? "rtl" : "ltr";
+      router.refresh();
+    },
+    [router]
+  );
 
   const value = useMemo<IntlContextValue>(() => {
     const dict = getDictionary(locale);

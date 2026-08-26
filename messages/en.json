@@ -683,6 +683,13 @@
       "deepTestTitle": "Real request results (chat + embedding)",
       "chat": "Chat",
       "embedding": "Embedding"
+    },
+    "posts": {
+      "agentPipeline": "Agent pipeline",
+      "slug": "Slug",
+      "tags": "Tags",
+      "coverImageUrl": "Cover image URL",
+      "reviewBadge": "Review"
     }
   }
 }

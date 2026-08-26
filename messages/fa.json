@@ -683,6 +683,13 @@
       "deepTestTitle": "نتایج درخواست واقعی (چت + Embedding)",
       "chat": "چت",
       "embedding": "Embedding"
+    },
+    "posts": {
+      "agentPipeline": "خط لولهٔ عامل‌ها",
+      "slug": "نامک",
+      "tags": "برچسب‌ها",
+      "coverImageUrl": "نشانی تصویر جلد",
+      "reviewBadge": "بازبینی"
     }
   }
 }

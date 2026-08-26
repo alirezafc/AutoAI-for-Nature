@@ -378,7 +378,7 @@ export default function ArticleReviewWorkspace() {
         <div className="rounded-lg border bg-card">
           <div className="flex items-center justify-between border-b px-4 py-2.5">
             <span className="text-xs font-bold uppercase tracking-wide text-amber-600">Preview — Not Published</span>
-            {post.status === "needs_review" && <Badge variant="secondary">Review</Badge>}
+            {post.status === "needs_review" && <Badge variant="secondary">{t("admin.posts.reviewBadge")}</Badge>}
           </div>
           <div dir={dir} className="p-6">
             {post.coverImage && (
@@ -461,7 +461,7 @@ export default function ArticleReviewWorkspace() {
         <Card>
           <CardContent className="p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-semibold">Agent pipeline</h2>
+              <h2 className="font-semibold">{t("admin.posts.agentPipeline")}</h2>
               <Link href={`/admin/runs/${run.id}`} className="text-sm text-primary hover:underline">
                 {t("common.view")}
               </Link>
@@ -520,7 +520,7 @@ export default function ArticleReviewWorkspace() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Slug</Label>
+                <Label>{t("admin.posts.slug")}</Label>
                 <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -528,11 +528,11 @@ export default function ArticleReviewWorkspace() {
                 <Textarea value={form.excerpt} onChange={(e) => setForm({ ...form, excerpt: e.target.value })} className="min-h-[70px]" />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Cover image URL</Label>
+                <Label>{t("admin.posts.coverImageUrl")}</Label>
                 <Input value={form.coverImage} onChange={(e) => setForm({ ...form, coverImage: e.target.value })} placeholder="https://..." />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Tags</Label>
+                <Label>{t("admin.posts.tags")}</Label>
                 <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="forests, ecology" />
               </div>
               <div className="space-y-2 md:col-span-2">
